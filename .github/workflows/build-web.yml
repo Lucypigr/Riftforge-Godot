@@ -1,17 +1,20 @@
-name: Build Godot Web
+name: Build and deploy Godot Web
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
 
 jobs:
   web:
     name: Export browser version
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     container:
       image: barichello/godot-ci:4.3
     steps:
@@ -48,3 +51,33 @@ jobs:
           name: riftforge-web
           path: build/web/
           if-no-files-found: error
+
+  deploy:
+    name: Publish game on GitHub Pages
+    needs: web
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download exported game
+        uses: actions/download-artifact@v4
+        with:
+          name: riftforge-web
+          path: build/web/
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Package game for Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/web/
+
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
