@@ -43,18 +43,36 @@ jobs:
           test "$(stat -c%s fonts/NotoSansTC.ttf)" -gt 1000000
           test -s fonts/OFL.txt
 
-      - name: Import project and inspect errors
+      - name: Import project and reject script errors
         shell: bash
         run: |
           set -euo pipefail
-          godot --headless --path . --editor --quit
+          godot --headless --path . --editor --quit 2>&1 | tee /tmp/riftforge-import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-import.log; then
+            echo 'Godot reported script/import errors. Refusing to publish.' >&2
+            exit 1
+          fi
+
+      - name: Smoke test project startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --quit-after 5 2>&1 | tee /tmp/riftforge-startup.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-startup.log; then
+            echo 'Godot reported startup errors. Refusing to publish.' >&2
+            exit 1
+          fi
 
       - name: Export Web (single-threaded)
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build/web
-          godot --headless --path . --export-release "Web" build/web/index.html
+          godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | tee /tmp/riftforge-export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-export.log; then
+            echo 'Godot reported Web export errors. Refusing to publish.' >&2
+            exit 1
+          fi
           test -s build/web/index.html
           test -n "$(find build/web -maxdepth 1 -name '*.wasm' -print -quit)"
           test -n "$(find build/web -maxdepth 1 -name '*.pck' -print -quit)"
