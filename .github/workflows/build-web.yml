@@ -34,12 +34,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p fonts
-          curl --fail --location --show-error --silent --retry 3 \
+          wget --quiet --tries=3 --timeout=45 \
             'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf' \
-            --output fonts/NotoSansTC.ttf
-          curl --fail --location --show-error --silent --retry 3 \
+            -O fonts/NotoSansTC.ttf
+          wget --quiet --tries=3 --timeout=45 \
             'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/OFL.txt' \
-            --output fonts/OFL.txt
+            -O fonts/OFL.txt
           test "$(stat -c%s fonts/NotoSansTC.ttf)" -gt 1000000
           test -s fonts/OFL.txt
 
