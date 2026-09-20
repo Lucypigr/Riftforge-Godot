@@ -1,0 +1,50 @@
+name: Build Godot Web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Export browser version
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - name: Checkout Godot project
+        uses: actions/checkout@v4
+
+      - name: Install provided export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a /root/.local/share/godot/export_templates/. "$HOME/.local/share/godot/export_templates/"
+          godot --version
+
+      - name: Import project and inspect errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --editor --quit
+
+      - name: Export Web (single-threaded)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/web
+          godot --headless --path . --export-release "Web" build/web/index.html
+          test -s build/web/index.html
+          test -n "$(find build/web -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/web -maxdepth 1 -name '*.pck' -print -quit)"
+
+      - name: Upload browser build
+        uses: actions/upload-artifact@v4
+        with:
+          name: riftforge-web
+          path: build/web/
+          if-no-files-found: error
