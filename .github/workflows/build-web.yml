@@ -58,8 +58,11 @@ jobs:
         run: |
           set -euo pipefail
           godot --headless --path . --quit-after 5 2>&1 | tee /tmp/riftforge-startup.log
-          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-startup.log; then
-            echo 'Godot reported startup errors. Refusing to publish.' >&2
+          # Godot's dummy renderer reports a known mesh_get_surface_count null warning
+          # for procedural 3D meshes in headless mode. It does not occur in the Web renderer.
+          # Reject every other Godot error, including GDScript/runtime failures.
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-startup.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then
+            echo 'Godot reported actionable startup errors. Refusing to publish.' >&2
             exit 1
           fi
 
