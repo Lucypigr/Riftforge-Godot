@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/mobile_game.gd" id="2_mobile_game"]
 [ext_resource type="Script" path="res://scripts/mobile_controls.gd" id="3_mobile_controls"]
+[ext_resource type="Script" path="res://scripts/mobile_status.gd" id="4_mobile_status"]
 
 [node name="Riftforge" type="Node3D"]
 script = ExtResource("2_mobile_game")
@@ -9,3 +10,6 @@ script = ExtResource("2_mobile_game")
 [node name="MobileControls" type="CanvasLayer" parent="."]
 layer = 4
 script = ExtResource("3_mobile_controls")
+
+[node name="MobileStatus" type="Label" parent="MobileControls"]
+script = ExtResource("4_mobile_status")
