@@ -1,6 +1,11 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/mobile_game.gd" id="2_mobile_game"]
+[ext_resource type="Script" path="res://scripts/mobile_controls.gd" id="3_mobile_controls"]
 
 [node name="Riftforge" type="Node3D"]
-script = ExtResource("1_game")
+script = ExtResource("2_mobile_game")
+
+[node name="MobileControls" type="CanvasLayer" parent="."]
+layer = 4
+script = ExtResource("3_mobile_controls")
