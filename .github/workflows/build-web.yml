@@ -29,6 +29,20 @@ jobs:
           cp -a /root/.local/share/godot/export_templates/. "$HOME/.local/share/godot/export_templates/"
           godot --version
 
+      - name: Add licensed Traditional Chinese font for Web
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fonts
+          curl --fail --location --show-error --silent --retry 3 \
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf' \
+            --output fonts/NotoSansTC.ttf
+          curl --fail --location --show-error --silent --retry 3 \
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/OFL.txt' \
+            --output fonts/OFL.txt
+          test "$(stat -c%s fonts/NotoSansTC.ttf)" -gt 1000000
+          test -s fonts/OFL.txt
+
       - name: Import project and inspect errors
         shell: bash
         run: |
@@ -44,6 +58,7 @@ jobs:
           test -s build/web/index.html
           test -n "$(find build/web -maxdepth 1 -name '*.wasm' -print -quit)"
           test -n "$(find build/web -maxdepth 1 -name '*.pck' -print -quit)"
+          cp fonts/OFL.txt build/web/NOTO_FONT_LICENSE.txt
 
       - name: Upload browser build
         uses: actions/upload-artifact@v4
