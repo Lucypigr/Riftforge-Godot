@@ -57,17 +57,25 @@ func _physics_process(delta: float) -> void:
 	_hit_flash = maxf(0.0, _hit_flash - delta)
 	mana = minf(max_mana, mana + 8.5 * delta)
 	_body_material.albedo_color = Color("#ffffff") if _hit_flash > 0.0 else Color("#4bc6d5")
-	var axis := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
-	var move_dir := Vector3(axis.x, 0, axis.y).normalized()
+	var axis: Vector2 = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+	if game.mobile_active:
+		axis = game.mobile_move
+	var move_dir := Vector3(axis.x, 0, axis.y)
+	if move_dir.length_squared() > 1.0:
+		move_dir = move_dir.normalized()
 	if game.ui_open:
 		move_dir = Vector3.ZERO
 	if game.aim_direction.length_squared() > 0.01:
 		aim = game.aim_direction
 		rotation.y = atan2(-aim.x, -aim.z)
-	if Input.is_action_just_pressed("dash") and not game.ui_open and dash_cooldown <= 0.0 and move_dir.length_squared() > 0.01:
+	var dash_requested: bool = Input.is_action_just_pressed("dash") or (game.mobile_active and game.mobile_dash_requested)
+	if game.mobile_active:
+		game.mobile_dash_requested = false
+	var dash_dir: Vector3 = move_dir if move_dir.length_squared() > 0.01 else game.aim_direction.normalized()
+	if dash_requested and not game.ui_open and dash_cooldown <= 0.0 and dash_dir.length_squared() > 0.01:
 		dash_cooldown = 2.2
 		_dash_time = 0.19
-		_dash_direction = move_dir
+		_dash_direction = dash_dir
 		invulnerable = 0.29
 		game.spawn_burst(global_position, Color("#52e8e8"), 1.1)
 	if _dash_time > 0.0:
