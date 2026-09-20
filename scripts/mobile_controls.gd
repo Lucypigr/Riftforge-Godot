@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Landscape ARPG layout; touches are indexed, never shared between thumbs.
+## Landscape mobile ARPG controls: separate touch IDs for moving and attacking.
 const FONT_PATH := "res://fonts/NotoSansTC.ttf"
 const JOY_RADIUS := 64.0
 const TOUCH_RADIUS := 86.0
@@ -20,9 +20,10 @@ func _ready() -> void:
 	game = get_parent()
 	surface = Control.new()
 	surface.name = "TouchHUD"
-	surface.set_anchors_preset(Control.PRESET_FULL_RECT)
 	surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(surface)
+	# Set full-screen anchors only after adding the Control to its CanvasLayer.
+	surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	surface.draw.connect(_draw_hud)
 	surface.resized.connect(_layout)
 	font = load(FONT_PATH) as Font if ResourceLoader.exists(FONT_PATH) else ThemeDB.fallback_font
@@ -30,15 +31,19 @@ func _ready() -> void:
 
 func _initialize() -> void:
 	if not is_instance_valid(game.hud):
+		push_warning("Mobile HUD initialization delayed: game HUD unavailable.")
+		call_deferred("_initialize")
 		return
 	enabled = DisplayServer.is_touchscreen_available()
-	if OS.has_feature("web") and JavaScriptBridge.is_available():
-		enabled = enabled or bool(JavaScriptBridge.eval("window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || location.search.includes('touch=1')"))
+	if OS.has_feature("web"):
+		# Godot 4.3 has JavaScriptBridge.eval(), but NOT JavaScriptBridge.is_available().
+		# The old nonexistent method caused a script parse error, hiding the whole joystick.
+		var browser_touch = JavaScriptBridge.eval("window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || location.search.includes('touch=1')")
+		enabled = enabled or bool(browser_touch)
 	game.mobile_active = enabled
 	surface.visible = enabled
 	if not enabled:
 		return
-	# Existing HUD root children: health, objectives, desktop key hints, notice.
 	if game.hud._root.get_child_count() >= 3:
 		game.hud._root.get_child(1).hide()
 		game.hud._root.get_child(2).hide()
@@ -101,7 +106,7 @@ func _start_touch(id: int, pos: Vector2) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if game.ui_open:
-		return # Native GUI uses normal touch-to-mouse emulation in menus.
+		return
 	if joy_id < 0 and pos.x < surface.size.x * 0.39 and pos.y > surface.size.y * 0.47:
 		joy_id = id
 		joy_origin = _center("joy") if pos.distance_to(_center("joy")) < TOUCH_RADIUS else pos
@@ -113,9 +118,9 @@ func _start_touch(id: int, pos: Vector2) -> void:
 		attack_origin = pos
 		dragging_aim = false
 		_auto_aim()
-		_try_attack() # Tap fires once; hold automatically repeats on cooldown.
+		_try_attack()
 	elif _in_button(pos, "nova", 47.0) and nova_id < 0:
-		nova_id = id # Radial skill fires on release.
+		nova_id = id
 	elif _in_button(pos, "dash", 47.0):
 		game.mobile_dash_requested = true
 	elif _in_button(pos, "interact", 43.0) and _has_interaction():
