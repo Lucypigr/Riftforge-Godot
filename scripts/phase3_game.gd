@@ -1,10 +1,13 @@
 extends "res://scripts/phase2_game.gd"
-## Phase 3 vertical slice: actual drop capacity, equipment swapping and saved grid positions.
+## Phase 3 inventory with optional Phase 4 combat, isolated on feature/phase4-combat-v2.
 const Grid = preload("res://scripts/grid_inventory.gd")
 const GridHUD = preload("res://scripts/grid_hud.gd")
 
 func _ready() -> void:
 	super._ready()
+	# Phase 4 branch only: PC and mobile share one resolver and unchanged casting controls.
+	_skill_runtime.use_combat_v2 = true
+	_nova_skill.damage_type = &"lightning"
 	var extra := Grid.normalize(inventory)
 	var previous_hud = hud
 	remove_child(previous_hud)
@@ -15,7 +18,7 @@ func _ready() -> void:
 	if extra > 0:
 		hud.announce("舊存檔有 %d 件物品超出格子，已保留，可於背包清單查看。" % extra)
 	else:
-		hud.announce("新版背包已啟用：開啟背包查看 12×5 格子。")
+		hud.announce("戰鬥 V2 已啟用：武器與技能依傷害類型計算")
 	save_progress()
 
 func _interact() -> void:
