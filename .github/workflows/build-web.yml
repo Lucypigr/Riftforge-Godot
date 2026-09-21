@@ -141,7 +141,7 @@ jobs:
       - name: Checkout verified Phase 4 combat experiment separately (not merged)
         uses: actions/checkout@v4
         with:
-          ref: d40e8467e24ed53d476900d2c2129cb5e941349a
+          ref: 29f3532b459ef74ac51c296c7142f096d82ba48a
           path: phase4-src
           persist-credentials: false
 
