@@ -66,6 +66,17 @@ jobs:
             exit 1
           fi
 
+      - name: Regression test mobile skill controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_mobile_inputs.gd 2>&1 | tee /tmp/riftforge-mobile.log
+          grep -q 'MOBILE INPUT TEST PASSED: 9 checks' /tmp/riftforge-mobile.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-mobile.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then
+            echo 'Godot reported mobile test errors. Refusing to publish.' >&2
+            exit 1
+          fi
+
       - name: Export Web (single-threaded)
         shell: bash
         run: |
