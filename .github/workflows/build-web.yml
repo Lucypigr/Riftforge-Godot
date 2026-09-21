@@ -48,20 +48,14 @@ jobs:
         run: |
           set -euo pipefail
           godot --headless --path . --editor --quit 2>&1 | tee /tmp/riftforge-import.log
-          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-import.log; then
-            echo 'Godot reported script/import errors. Refusing to publish.' >&2
-            exit 1
-          fi
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-import.log; then exit 1; fi
 
       - name: Smoke test stable game startup
         shell: bash
         run: |
           set -euo pipefail
           godot --headless --path . --quit-after 5 2>&1 | tee /tmp/riftforge-startup.log
-          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-startup.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then
-            echo 'Godot reported actionable startup errors. Refusing to publish.' >&2
-            exit 1
-          fi
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-startup.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
 
       - name: Regression test stable mobile skill controls
         shell: bash
@@ -69,34 +63,28 @@ jobs:
           set -euo pipefail
           godot --headless --path . --script res://tests/test_mobile_inputs.gd 2>&1 | tee /tmp/riftforge-mobile.log
           grep -q 'MOBILE INPUT TEST PASSED: 9 checks' /tmp/riftforge-mobile.log
-          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-mobile.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then
-            echo 'Godot reported mobile test errors. Refusing to publish.' >&2
-            exit 1
-          fi
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-mobile.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
 
-      - name: Export stable Web game (unchanged root URL)
+      - name: Export stable Web game at root
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build/web
           godot --headless --path . --export-release "Web" build/web/index.html 2>&1 | tee /tmp/riftforge-export.log
-          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-export.log; then
-            echo 'Godot reported Web export errors. Refusing to publish.' >&2
-            exit 1
-          fi
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-export.log; then exit 1; fi
           test -s build/web/index.html
           test -n "$(find build/web -maxdepth 1 -name '*.wasm' -print -quit)"
           test -n "$(find build/web -maxdepth 1 -name '*.pck' -print -quit)"
           cp fonts/OFL.txt build/web/NOTO_FONT_LICENSE.txt
 
-      - name: Checkout pinned experimental Phase 2 build in separate directory
+      - name: Checkout pinned experiment separately (not merged)
         uses: actions/checkout@v4
         with:
           ref: 48269e22b68ef5cefea494c5f1ad6ccea3471f37
           path: phase2-src
           persist-credentials: false
 
-      - name: Test and export independent Phase 2 preview
+      - name: Test and export Phase 2 to preview subdirectory
         shell: bash
         run: |
           set -euo pipefail
@@ -105,7 +93,7 @@ jobs:
           cp fonts/OFL.txt build/web/preview/phase2/NOTO_FONT_LICENSE.txt
           godot --headless --path phase2-src --editor --quit 2>&1 | tee /tmp/phase2-import.log
           if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase2-import.log; then exit 1; fi
-          for spec in 'test_phase2_skill_core.gd|PHASE2 TEST RESULT: 20 passed / 0 failed' 'test_phase2_integration.gd|PHASE2 INTEGRATION RESULT: 21 passed / 0 failed' 'test_phase2_cast_failures.gd|PHASE2 CAST FAILURES:' 'test_phase2_multitouch.gd|PHASE2 MULTITOUCH: 9 passed / 0 failed'; do
+          for spec in 'test_phase2_skill_core.gd|PHASE2 TEST RESULT: 20 passed / 0 failed' 'test_phase2_integration.gd|PHASE2 INTEGRATION RESULT: 21 passed / 0 failed' 'test_phase2_cast_feedback.gd|PHASE2 CAST FEEDBACK: 11 passed / 0 failed' 'test_phase2_multitouch.gd|PHASE2 MULTITOUCH: 9 passed / 0 failed'; do
             script="${spec%%|*}"
             marker="${spec#*|}"
             godot --headless --path phase2-src --script "res://tests/$script" 2>&1 | tee "/tmp/phase2-${script}.log"
@@ -119,7 +107,7 @@ jobs:
           test -n "$(find build/web/preview/phase2 -maxdepth 1 -name '*.pck' -print -quit)"
           echo 'PHASE2 PREVIEW READY INSIDE WEB ARTIFACT'
 
-      - name: Upload browser builds
+      - name: Upload both browser builds
         uses: actions/upload-artifact@v4
         with:
           name: riftforge-web
@@ -143,15 +131,12 @@ jobs:
         with:
           name: riftforge-web
           path: build/web/
-
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-
       - name: Package games for Pages
         uses: actions/upload-pages-artifact@v4
         with:
           path: build/web/
-
       - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v4
