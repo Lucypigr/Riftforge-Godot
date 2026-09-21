@@ -1,10 +1,11 @@
 extends RefCounted
-## Data-level casting and cooldown logic; renderers/projectiles consume its events.
-## Integration must apply damage to real enemy Nodes only after a collision/hit.
+## Shared casting and cooldown logic. Phase 4 damage is opt-in, preserving old regressions.
 const SkillDefinition = preload("res://research/phase2/skill_definition.gd")
 const CombatResolver = preload("res://research/phase2/combat_resolver.gd")
+const CombatResolverV2 = preload("res://research/phase4/combat_resolver_v2.gd")
 
 var mana: float = 100.0
+var use_combat_v2: bool = false
 var _cooldowns: Dictionary = {}
 
 func _init(start_mana: float = 100.0) -> void:
@@ -59,13 +60,14 @@ func cast(skill: SkillDefinition, origin: Vector3, aim: Vector3, targets: Array,
 			difference.y = 0.0
 			if difference.length_squared() > skill.radius * skill.radius:
 				continue
-			var result: Dictionary = CombatResolver.resolve(skill, target, modifiers, crit_roll)
+			var result: Dictionary = CombatResolverV2.resolve(skill, target, modifiers, randf(), randf()) if use_combat_v2 else CombatResolver.resolve(skill, target, modifiers, crit_roll)
 			if bool(result.get("ok", false)):
-				hits.append({"target_id": target.get("id", ""), "damage": result["damage"]})
+				if bool(result.get("hit", true)):
+					hits.append({"target_id": target.get("id", ""), "damage": result["damage"]})
 				feedback.append(result["feedback"])
 	return {"ok": true, "mana_left": mana, "shots": shots, "hits": hits, "feedback": feedback}
 
 func resolve_projectile_hit(skill: SkillDefinition, target: Dictionary, modifiers: Dictionary = {}, crit_roll: float = 0.99) -> Dictionary:
 	if skill == null or skill.delivery != "projectile":
 		return {"ok": false, "reason": "not_a_projectile", "damage": 0}
-	return CombatResolver.resolve(skill, target, modifiers, crit_roll)
+	return CombatResolverV2.resolve(skill, target, modifiers, randf(), crit_roll) if use_combat_v2 else CombatResolver.resolve(skill, target, modifiers, crit_roll)
