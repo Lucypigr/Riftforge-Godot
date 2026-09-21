@@ -1,28 +1,31 @@
 extends RefCounted
-## Original grid layout inspired by genre conventions; no external game assets or data.
+## Gameplay inventory: 120 real cells in two touch-friendly pages, not a visual-only resize.
 const COLS := 12
-const ROWS := 5
+const ROWS := 10
+const PAGE_ROWS := 5
+const PAGE_COUNT := 2
 
 static func footprint(item: Dictionary) -> Vector2i:
 	if item.has("grid_w") and item.has("grid_h"):
-		return Vector2i(clampi(int(item["grid_w"]), 1, COLS), clampi(int(item["grid_h"]), 1, ROWS))
+		return Vector2i(clampi(int(item["grid_w"]), 1, COLS), clampi(int(item["grid_h"]), 1, PAGE_ROWS))
 	match str(item.get("slot", "")):
-		"weapon": return Vector2i(2, 3)
-		"armor": return Vector2i(2, 3)
-		"shield": return Vector2i(2, 3)
+		"weapon", "armor", "shield": return Vector2i(2, 3)
 		"helmet", "gloves", "boots": return Vector2i(2, 2)
-		"ring", "amulet", "gem", "currency": return Vector2i(1, 1)
+		"ring", "amulet", "gem", "currency": return Vector2i.ONE
 	return Vector2i.ONE
+
+static func within_page(y: int, height: int) -> bool:
+	return y >= 0 and y + height <= ROWS and (y % PAGE_ROWS) + height <= PAGE_ROWS
 
 static func placed(item: Dictionary) -> bool:
 	var size := footprint(item)
 	var x := int(item.get("grid_x", -1))
 	var y := int(item.get("grid_y", -1))
-	return x >= 0 and y >= 0 and x + size.x <= COLS and y + size.y <= ROWS
+	return x >= 0 and x + size.x <= COLS and within_page(y, size.y)
 
 static func can_place(items: Array, item: Dictionary, x: int, y: int, ignore_index: int = -1) -> bool:
 	var size := footprint(item)
-	if x < 0 or y < 0 or x + size.x > COLS or y + size.y > ROWS:
+	if x < 0 or x + size.x > COLS or not within_page(y, size.y):
 		return false
 	for i in range(items.size()):
 		if i == ignore_index:
@@ -71,6 +74,14 @@ static func item_at(items: Array, x: int, y: int) -> int:
 			return i
 	return -1
 
+static func occupied_cells(items: Array) -> int:
+	var count := 0
+	for item in items:
+		if placed(item):
+			var size := footprint(item)
+			count += size.x * size.y
+	return count
+
 static func overflow_count(items: Array) -> int:
 	var count := 0
 	for item in items:
@@ -79,7 +90,7 @@ static func overflow_count(items: Array) -> int:
 	return count
 
 static func normalize(items: Array) -> int:
-	# Keep old save items and any nonoverlapping positions. Never delete overflow.
+	# Legacy saves keep valid cells. Overflow is retained, never deleted.
 	var originals: Array = items.duplicate(true)
 	var occupied: Array = []
 	var accepted: Dictionary = {}
