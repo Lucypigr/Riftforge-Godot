@@ -10,6 +10,12 @@ jobs:
       image: barichello/godot-ci:4.3
     steps:
       - uses: actions/checkout@v4
+      - name: Import and reject script errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --editor --quit 2>&1 | tee phase2-import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' phase2-import.log; then exit 1; fi
       - name: Test original data-level skill core
         shell: bash
         run: |
@@ -17,3 +23,13 @@ jobs:
           godot --headless --path . --script res://tests/test_phase2_skill_core.gd 2>&1 | tee phase2-test.log
           grep -q 'PHASE2 TEST RESULT: 20 passed / 0 failed' phase2-test.log
           if grep -Eq 'SCRIPT ERROR:|Parse Error:|FAIL ' phase2-test.log; then exit 1; fi
+      - name: Test playable scene, collisions and mobile inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_integration.gd 2>&1 | tee phase2-integration.log
+          grep -Eq 'PHASE2 INTEGRATION RESULT: [0-9]+ passed / 0 failed' phase2-integration.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' phase2-integration.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then
+            echo 'Actionable integration error detected' >&2
+            exit 1
+          fi
