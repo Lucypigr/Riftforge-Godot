@@ -1,8 +1,8 @@
 extends Control
-## Lightweight, touch-friendly original item grid: selection is based on occupied cells.
+## Touch-friendly original item grid. Visual cell and touch hit box share the same size.
 signal cell_pressed(x: int, y: int)
 const Grid = preload("res://scripts/grid_inventory.gd")
-const CELL := 37.0
+const CELL := 52.0
 const FONT_PATH := "res://fonts/NotoSansTC.ttf"
 var items: Array = []
 var selected_index := -1
@@ -55,4 +55,4 @@ func _draw() -> void:
 			if name.length() > 6:
 				name = name.substr(0, 6) + "…"
 			var text_at := rect.position + Vector2(2, minf(rect.size.y - 4.0, rect.size.y * 0.50))
-			draw_string(_font, text_at, name, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 4.0, 12, Color("#f8f2e6"))
+			draw_string(_font, text_at, name, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 4.0, 14, Color("#f8f2e6"))
