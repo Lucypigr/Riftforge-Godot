@@ -8,6 +8,11 @@ var max_hp: float = 42.0
 var move_speed: float = 4.0
 var attack_range: float = 1.8
 var attack_cooldown: float = 1.2
+## Original Riftforge combat V2 defence stats, not imported game data.
+var defensive_ability: float = 1000.0
+var armor_rating: float = 0.0
+var armor_absorption: float = 0.7
+var damage_resistances: Dictionary = {}
 var _attack_timer: float = 1.0
 var _windup: float = 0.0
 var _flash: float = 0.0
@@ -30,21 +35,33 @@ func initialize(owner_game, enemy_kind: String, is_boss: bool = false) -> void:
 			hp = 43.0
 			move_speed = 5.5
 			attack_range = 1.65
+			defensive_ability = 950.0
+			armor_rating = 5.0
+			damage_resistances = {}
 			_color = Color("#df6772")
 		"spitter":
 			hp = 32.0
 			move_speed = 3.4
 			attack_range = 9.5
+			defensive_ability = 990.0
+			armor_rating = 3.0
+			damage_resistances = {"fire": 0.12}
 			_color = Color("#9b7ae1")
 		"brute":
 			hp = 92.0
 			move_speed = 2.7
 			attack_range = 2.7
+			defensive_ability = 1100.0
+			armor_rating = 24.0
+			damage_resistances = {"physical": 0.04}
 			_color = Color("#e4a95f")
 	if boss:
 		hp = 490.0
 		move_speed = 3.35
 		attack_range = 3.1
+		defensive_ability = 1210.0
+		armor_rating = 60.0
+		damage_resistances = {"fire": 0.08, "lightning": 0.08, "physical": 0.08}
 		_color = Color("#f04c9d")
 	max_hp = hp
 	var collision := CollisionShape3D.new()
