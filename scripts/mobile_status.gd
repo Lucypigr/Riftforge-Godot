@@ -26,7 +26,7 @@ func _process(_delta: float) -> void:
 	if not visible:
 		return
 	if game.zone == "camp":
-		text = "營地｜靠近傳送門互動"
+		text = "營地｜可試招｜靠近門傳送"
 	else:
 		var boss: String = "已擊敗" if game.boss_defeated else ("出現" if game.boss_spawned else "未出現")
 		text = "遠征 %d｜%d/%d｜首領%s" % [game.runs, game.wave_kills, game.target_kills, boss]
