@@ -1,0 +1,19 @@
+name: Phase 2 skill-core regression
+on:
+  push:
+    branches: [feature/phase2-skill-core]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test original data-level skill core
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_skill_core.gd 2>&1 | tee phase2-test.log
+          grep -q 'PHASE2 TEST RESULT: 20 passed / 0 failed' phase2-test.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|FAIL ' phase2-test.log; then exit 1; fi
