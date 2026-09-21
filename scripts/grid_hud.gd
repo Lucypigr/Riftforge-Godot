@@ -1,8 +1,9 @@
 extends "res://scripts/hud.gd"
-## Two distinct functional tabs: a 120-cell bag and a character equipment page.
+## Grid-first, original ARPG layout: real 120-cell bag and separate equipped-gear tab.
+## No permanently visible tutorial paragraphs or item-detail block under the bag.
 const Grid = preload("res://scripts/grid_inventory.gd")
 const GridView = preload("res://scripts/inventory_grid_view.gd")
-const INVENTORY_PANEL_SIZE := Vector2(790, 650)
+const INVENTORY_PANEL_SIZE := Vector2(790, 550)
 var _grid_view: Control
 var _grid_status: Label
 var _overflow_choices: OptionButton
@@ -16,91 +17,115 @@ var _page_label: Label
 var _weapon_button: Button
 var _armor_button: Button
 var _equipment_details: Label
+var _equip_button: Button
+var _tidy_button: Button
 var _active_tab := 0
 var _grid_page := 0
 var _selected_index := -1
 var _inspected_slot := "weapon"
 
 func _build_inventory() -> void:
-	_inventory_panel = _panel(-395, -325, 395, 325, true)
+	_inventory_panel = _panel(-395, -275, 395, 275, true)
 	_inventory_panel.visible = false
+	var frame := StyleBoxFlat.new()
+	frame.bg_color = Color("#11141b")
+	frame.border_color = Color("#90724b")
+	frame.set_border_width_all(2)
+	frame.set_corner_radius_all(5)
+	frame.content_margin_left = 12
+	frame.content_margin_right = 12
+	frame.content_margin_top = 9
+	frame.content_margin_bottom = 9
+	_inventory_panel.add_theme_stylebox_override("panel", frame)
 	var layout := VBoxContainer.new()
-	layout.add_theme_constant_override("separation", 8)
+	layout.add_theme_constant_override("separation", 5)
 	_inventory_panel.add_child(layout)
-	layout.add_child(_label("角色管理｜背包與裝備分頁", 23))
+	var title := _label("戰利品｜背包與角色", 21)
+	title.add_theme_color_override("font_color", Color("#d9b982"))
+	layout.add_child(title)
+
 	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 10)
+	tabs.add_theme_constant_override("separation", 6)
 	layout.add_child(tabs)
 	_bag_tab_button = Button.new()
-	_bag_tab_button.text = "背包（120 格）"
-	_bag_tab_button.custom_minimum_size = Vector2(190, 48)
+	_bag_tab_button.text = "背包"
+	_bag_tab_button.custom_minimum_size = Vector2(125, 43)
 	_bag_tab_button.pressed.connect(_open_bag)
 	tabs.add_child(_bag_tab_button)
 	_equipment_tab_button = Button.new()
 	_equipment_tab_button.text = "角色裝備"
-	_equipment_tab_button.custom_minimum_size = Vector2(170, 48)
+	_equipment_tab_button.custom_minimum_size = Vector2(140, 43)
 	_equipment_tab_button.pressed.connect(_open_equipment)
 	tabs.add_child(_equipment_tab_button)
+	var filler := Control.new()
+	filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs.add_child(filler)
+	_equip_button = Button.new()
+	_equip_button.text = "裝備所選"
+	_equip_button.custom_minimum_size = Vector2(124, 43)
+	_equip_button.pressed.connect(_equip_selected)
+	tabs.add_child(_equip_button)
+	_tidy_button = Button.new()
+	_tidy_button.text = "整理"
+	_tidy_button.custom_minimum_size = Vector2(90, 43)
+	_tidy_button.pressed.connect(_repack)
+	tabs.add_child(_tidy_button)
 	var close_button := Button.new()
-	close_button.text = "關閉"
-	close_button.custom_minimum_size = Vector2(110, 48)
+	close_button.text = "✕ 關閉"
+	close_button.custom_minimum_size = Vector2(105, 43)
 	close_button.pressed.connect(toggle_inventory)
 	tabs.add_child(close_button)
 
 	_bag_page = VBoxContainer.new()
-	_bag_page.add_theme_constant_override("separation", 6)
+	_bag_page.add_theme_constant_override("separation", 5)
 	layout.add_child(_bag_page)
 	var navigation := HBoxContainer.new()
-	navigation.add_theme_constant_override("separation", 12)
+	navigation.add_theme_constant_override("separation", 8)
 	_bag_page.add_child(navigation)
 	_prev_button = Button.new()
-	_prev_button.text = "◀ 上一頁"
-	_prev_button.custom_minimum_size = Vector2(140, 40)
+	_prev_button.text = "◀"
+	_prev_button.custom_minimum_size = Vector2(65, 39)
 	_prev_button.pressed.connect(_previous_page)
 	navigation.add_child(_prev_button)
-	_page_label = _label("", 18)
-	_page_label.custom_minimum_size = Vector2(180, 36)
-	_page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_page_label = _label("", 17)
+	_page_label.custom_minimum_size = Vector2(170, 34)
+	_page_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	navigation.add_child(_page_label)
 	_next_button = Button.new()
-	_next_button.text = "下一頁 ▶"
-	_next_button.custom_minimum_size = Vector2(140, 40)
+	_next_button.text = "▶"
+	_next_button.custom_minimum_size = Vector2(65, 39)
 	_next_button.pressed.connect(_next_page)
 	navigation.add_child(_next_button)
+	var nav_filler := Control.new()
+	nav_filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	navigation.add_child(nav_filler)
+	_grid_status = _label("", 15)
+	_grid_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_grid_status.add_theme_color_override("font_color", Color("#c7b38d"))
+	navigation.add_child(_grid_status)
+
 	_grid_view = GridView.new()
-	_grid_view.custom_minimum_size = Vector2(624, 260)
+	_grid_view.custom_minimum_size = Vector2(720, 300)
 	_grid_view.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_bag_page.add_child(_grid_view)
 	_grid_view.cell_pressed.connect(_on_grid_cell)
-	_bag_page.add_child(_label("點物品選取，再點空格移動；切頁後也能移到另一頁。", 15))
-	_item_details = _label("點選物品檢視屬性", 16)
-	_item_details.custom_minimum_size = Vector2(0, 52)
+
+	# POE-style contextual detail strip: only occupies space after item selection.
+	_item_details = _label("", 15)
+	_item_details.custom_minimum_size = Vector2(0, 43)
 	_item_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_item_details.add_theme_color_override("font_color", Color("#e7d4ac"))
+	_item_details.visible = false
 	_bag_page.add_child(_item_details)
-	_grid_status = _label("", 15)
-	_bag_page.add_child(_grid_status)
 	_overflow_choices = OptionButton.new()
 	_overflow_choices.visible = false
 	_overflow_choices.item_selected.connect(_on_overflow_selected)
 	_bag_page.add_child(_overflow_choices)
-	var bag_actions := HBoxContainer.new()
-	bag_actions.add_theme_constant_override("separation", 12)
-	_bag_page.add_child(bag_actions)
-	var equip_button := Button.new()
-	equip_button.text = "裝備所選"
-	equip_button.custom_minimum_size = Vector2(170, 46)
-	equip_button.pressed.connect(_equip_selected)
-	bag_actions.add_child(equip_button)
-	var tidy_button := Button.new()
-	tidy_button.text = "整理兩頁"
-	tidy_button.custom_minimum_size = Vector2(170, 46)
-	tidy_button.pressed.connect(_repack)
-	bag_actions.add_child(tidy_button)
 
 	_equipment_page = VBoxContainer.new()
-	_equipment_page.add_theme_constant_override("separation", 18)
+	_equipment_page.add_theme_constant_override("separation", 14)
 	layout.add_child(_equipment_page)
-	_equipment_page.add_child(_label("目前穿戴｜與背包獨立顯示，換裝請至背包選擇物品。", 18))
+	_equipment_page.add_child(_label("已裝備物品", 21))
 	_equipment = _label("", 17)
 	_equipment_page.add_child(_equipment)
 	_weapon_button = Button.new()
@@ -112,7 +137,7 @@ func _build_inventory() -> void:
 	_armor_button.pressed.connect(_inspect_armor)
 	_equipment_page.add_child(_armor_button)
 	_equipment_details = _label("", 18)
-	_equipment_details.custom_minimum_size = Vector2(0, 100)
+	_equipment_details.custom_minimum_size = Vector2(0, 90)
 	_equipment_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_equipment_page.add_child(_equipment_details)
 	_bag_page.visible = true
@@ -136,6 +161,8 @@ func _show_tab(target: int) -> void:
 	_equipment_page.visible = _active_tab == 1
 	_bag_tab_button.disabled = _active_tab == 0
 	_equipment_tab_button.disabled = _active_tab == 1
+	_equip_button.visible = _active_tab == 0
+	_tidy_button.visible = _active_tab == 0
 	_refresh_inventory()
 
 func _previous_page() -> void:
@@ -154,14 +181,14 @@ func _refresh_inventory() -> void:
 	if _selected_index >= game.inventory.size():
 		_selected_index = -1
 	_grid_view.show_items(game.inventory, _selected_index, _grid_page)
-	_page_label.text = "背包 %d / %d" % [_grid_page + 1, Grid.PAGE_COUNT]
+	_page_label.text = "第 %d / %d 頁" % [_grid_page + 1, Grid.PAGE_COUNT]
 	_prev_button.disabled = _grid_page <= 0
 	_next_button.disabled = _grid_page >= Grid.PAGE_COUNT - 1
 	var extra := Grid.overflow_count(game.inventory)
 	var cells := Grid.occupied_cells(game.inventory)
-	_grid_status.text = "佔用 %d / %d 格｜%d 件物品" % [cells, Grid.COLS * Grid.ROWS, game.inventory.size()]
+	_grid_status.text = "%d / %d 格｜%d 件" % [cells, Grid.COLS * Grid.ROWS, game.inventory.size()]
 	if extra > 0:
-		_grid_status.text += "｜舊檔待整理 %d 件" % extra
+		_grid_status.text += "｜待整理 %d" % extra
 	_overflow_choices.clear()
 	for i in range(game.inventory.size()):
 		var item: Dictionary = game.inventory[i]
@@ -170,7 +197,7 @@ func _refresh_inventory() -> void:
 	_overflow_choices.visible = extra > 0
 	var weapon: Dictionary = game.equipment["weapon"]
 	var armor: Dictionary = game.equipment["armor"]
-	_equipment.text = "生命上限 %d｜目前僅有武器與護甲兩個已實作欄位" % int(game.player.max_hp)
+	_equipment.text = "生命上限 %d｜目前已實作武器、護甲" % int(game.player.max_hp)
 	_weapon_button.text = "武器｜%s" % str(weapon.get("name", "未知"))
 	_armor_button.text = "護甲｜%s" % str(armor.get("name", "未知"))
 	_inspect_equipped(_inspected_slot)
@@ -190,8 +217,11 @@ func _inspect_equipped(slot: String) -> void:
 	_equipment_details.text = "%s｜%s [%s]\n傷害 +%s　生命 +%s　護甲 %s%%" % ["武器" if slot == "weapon" else "護甲", str(item.get("name", "未知")), str(item.get("rarity", "普通")), str(item.get("damage", 0)), str(item.get("hp", 0)), str(int(float(item.get("armor", 0.0)) * 100.0))]
 
 func _update_selection() -> void:
-	if _selected_index < 0 or _selected_index >= game.inventory.size():
-		_item_details.text = "點物品檢視屬性，或切換到角色裝備頁面。"
+	var has_selection := _selected_index >= 0 and _selected_index < game.inventory.size()
+	_item_details.visible = has_selection and _active_tab == 0
+	_equip_button.disabled = not has_selection
+	if not has_selection:
+		_item_details.text = ""
 		return
 	var item: Dictionary = game.inventory[_selected_index]
 	var shape := Grid.footprint(item)
