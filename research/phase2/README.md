@@ -1,23 +1,28 @@
-# Riftforge Phase 2 — original skill core (experimental)
+# Riftforge Phase 2 — experimental skill integration
 
-This is an independent **data-level** prototype, motivated by the structural inventory in `riftforge_data_audit_phase1.zip`. It contains NO copied Grim Dawn DBR/TPL entries, original formulas, artwork or names. All test values are synthetic. It is **not** a game-engine conversion and does not yet change the playable game.
+This branch contains an **original, independent skill core** plus an adapter integrating it into the playable Godot scene. It includes no copied Grim Dawn DBR/TPL records, copyrighted artwork, or engine source. Its simplified formulas are NOT Grim Dawn or POE formulas.
 
-Files:
-- `skill_definition.gd`: editable skill schema and validation.
-- `combat_resolver.gd`: deterministic damage computation; returns a hit-feedback event.
-- `skill_runtime.gd`: mana, cooldown, ranged projectile spawn instructions, AoE target filtering. Does NOT auto-hit projectiles.
-- `tests/test_phase2_skill_core.gd`: synthetic functional tests.
+## Implemented
 
-## Run test
+- `skill_definition.gd`: resource-based skill schema with validation.
+- `combat_resolver.gd`: simplified damage, critical hit, resistance and hit feedback data.
+- `skill_runtime.gd`: mana, cooldown, projectile spawn commands and AoE target filtering.
+- `scripts/phase2_game.gd`: makes desktop and mobile call a shared bolt/nova casting implementation. Synchronizes existing HUD cooldowns and player mana with the shared runtime. Only an active gem in socket 0 enables the bolt.
+- `scripts/phase2_projectile.gd`: retains the original projectile visuals and pierce behavior but uses a swept motion segment and resolves damage on actual collision. Enemy projectiles retain the existing path.
+- `scenes/main.tscn`: experimental branch ONLY points to the new adapter. No change to the public `main` branch or GitHub Pages.
 
-```sh
-godot --headless --path . --script res://tests/test_phase2_skill_core.gd
-```
+## Verification
 
-## Integration gate
+`godot --headless --path . --script res://tests/test_phase2_skill_core.gd`
 
-Existing `scripts/game.gd`, mobile controls, scenes and web export are **unmodified**. A subsequent integration must: (1) store SkillDefinition data for original skills; (2) have both PC and mobile call the SAME cast command; (3) spawn and move a real projectile using a `shots` instruction and resolve hits only at actual collision; (4) apply `hits` damage to enemy Nodes; (5) render `feedback` events with animations/audio/numbers; (6) run device tests. These steps are not accomplished merely by providing the core.
+`godot --headless --path . --script res://tests/test_phase2_integration.gd`
 
-### Explicit limitations
+GitHub Actions runs both suites and checks an experimental Web export without publishing it. Current results: 20 core assertions + 21 integration assertions passed. Scene assertions include real-enemy HP changes after a swept projectile hit, area filtering, mana/cooldowns, mobile-button method dispatch, and field transition.
 
-Damage and resistances here are deliberately simplified ORIGINAL formulas, not a claim to reproduce Grim Dawn or POE. No proof of complete skill-database semantics, asset rights, actual animation timing, performance, or mobile playability is provided. The model uses per-target single resistance and external line-of-sight/collision validation.
+## Release gate and known limitations
+
+- Headless test inputs are synthesized method calls, NOT actual iPhone touches; multi-touch, visual appearance and controls still require hands-on device/browser testing.
+- Only two original sample skills are wired. This is not a conversion of the 34k Grim Dawn data records, original game engine, AI or art.
+- Existing enemy AI, loot, HUD and combat effects are the original Riftforge prototype, not an ARPG finished to a commercial game's standard.
+- No original Grim Dawn/POE assets, data, names or formulas are distributed. Before incorporating third-party content, verify licenses and prepare original replacements.
+- Do not merge this draft PR or describe the web game as updated until browser/mobile acceptance has been performed.
