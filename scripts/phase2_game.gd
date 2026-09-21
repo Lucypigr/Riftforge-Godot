@@ -1,6 +1,5 @@
 extends "res://scripts/mobile_game.gd"
-## Phase 2 bridge: PC and mobile now share a single casting/runtime implementation.
-## Only original Riftforge data is used; this is not a Grim Dawn engine or data port.
+## Both PC and touch use the same original Riftforge casting and damage pipeline.
 const SkillDefinition = preload("res://research/phase2/skill_definition.gd")
 const SkillRuntime = preload("res://research/phase2/skill_runtime.gd")
 const Phase2Projectile = preload("res://scripts/phase2_projectile.gd")
@@ -8,6 +7,7 @@ const Phase2Projectile = preload("res://scripts/phase2_projectile.gd")
 var _skill_runtime
 var _bolt_skill
 var _nova_skill
+var _skill_notice_wait: float = 0.0
 
 func _ready() -> void:
 	super._ready()
@@ -36,11 +36,12 @@ func _ready() -> void:
 	_sync_cooldowns()
 
 func _process(delta: float) -> void:
+	_skill_notice_wait = maxf(0.0, _skill_notice_wait - delta)
 	if _skill_runtime != null:
 		_skill_runtime.advance(delta)
 		_sync_cooldowns()
-	# Existing input loop dispatches to these overridden cast functions on desktop.
-	# Mobile controls also call these same functions, not a parallel damage path.
+	# Parent dispatches desktop attacks to these same overridden functions.
+	# Mobile controls call them directly, never a separate damage formula.
 	super._process(delta)
 	if _skill_runtime != null:
 		_sync_cooldowns()
@@ -49,15 +50,28 @@ func _sync_cooldowns() -> void:
 	_bolt_cd = _skill_runtime.remaining(_bolt_skill.skill_id)
 	_nova_cd = _skill_runtime.remaining(_nova_skill.skill_id)
 
+func _skill_blocked(reason: String, skill_name: String, cost: int) -> void:
+	# A held attack checks every frame: throttle notifications rather than resetting the HUD timer forever.
+	if _skill_notice_wait > 0.0 or not is_instance_valid(hud):
+		return
+	match reason:
+		"insufficient_mana": hud.announce("%s：魔力不足（需要 %d）" % [skill_name, cost])
+		"invalid_skill": hud.announce("%s：技能資料無效" % skill_name)
+		"invalid_aim": hud.announce("%s：請指定施放方向" % skill_name)
+		"missing_gem": hud.announce("燼焰彈未安裝：請檢查主動寶石孔")
+		_: return  # Cooldowns are displayed on the HUD; avoid spam.
+	_skill_notice_wait = 0.9
+
 func cast_bolt() -> void:
 	if _skill_runtime == null or not is_instance_valid(player) or ui_open:
 		return
-	# Socket 0 must contain the active skill; removing it disables casting.
 	if socket_gems.is_empty() or str(socket_gems[0]) != "ember_bolt":
+		_skill_blocked("missing_gem", "燼焰彈", 3)
 		return
 	_skill_runtime.mana = player.mana
 	var result: Dictionary = _skill_runtime.cast(_bolt_skill, player.global_position, aim_direction, [])
 	if not bool(result.get("ok", false)):
+		_skill_blocked(str(result.get("reason", "")), "燼焰彈", 3)
 		return
 	player.mana = _skill_runtime.mana
 	_sync_cooldowns()
@@ -96,8 +110,7 @@ func cast_nova() -> void:
 	var modifiers: Dictionary = {"flat_damage": float(equipment["weapon"].get("damage", 0.0)) * 0.7}
 	var result: Dictionary = _skill_runtime.cast(_nova_skill, player.global_position, Vector3.ZERO, targets, modifiers, randf())
 	if not bool(result.get("ok", false)):
-		if result.get("reason", "") == "insufficient_mana":
-			hud.announce("魔力不足：需要 25 魔力")
+		_skill_blocked(str(result.get("reason", "")), "震盪環", 25)
 		return
 	player.mana = _skill_runtime.mana
 	_sync_cooldowns()
