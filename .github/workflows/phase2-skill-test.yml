@@ -33,3 +33,19 @@ jobs:
             echo 'Actionable integration error detected' >&2
             exit 1
           fi
+      - name: Validate experimental Web export without publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates" fonts build/phase2-preview
+          cp -a /root/.local/share/godot/export_templates/. "$HOME/.local/share/godot/export_templates/"
+          wget --quiet --tries=3 --timeout=45 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf' -O fonts/NotoSansTC.ttf
+          test "$(stat -c%s fonts/NotoSansTC.ttf)" -gt 1000000
+          godot --headless --path . --editor --quit 2>&1 | tee phase2-reimport.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' phase2-reimport.log; then exit 1; fi
+          godot --headless --path . --export-release 'Web' build/phase2-preview/index.html 2>&1 | tee phase2-export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' phase2-export.log; then exit 1; fi
+          test -s build/phase2-preview/index.html
+          test -n "$(find build/phase2-preview -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/phase2-preview -maxdepth 1 -name '*.pck' -print -quit)"
+          echo 'PHASE2 WEB EXPORT: passed (not deployed)'
