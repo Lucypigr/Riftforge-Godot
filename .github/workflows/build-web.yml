@@ -11,14 +11,14 @@ concurrency:
 
 jobs:
   web:
-    name: Export browser version
+    name: Export stable game and isolated Phase 2 preview
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     container:
       image: barichello/godot-ci:4.3
     steps:
-      - name: Checkout Godot project
+      - name: Checkout stable Godot project
         uses: actions/checkout@v4
 
       - name: Install provided export templates
@@ -43,7 +43,7 @@ jobs:
           test "$(stat -c%s fonts/NotoSansTC.ttf)" -gt 1000000
           test -s fonts/OFL.txt
 
-      - name: Import project and reject script errors
+      - name: Import stable project and reject script errors
         shell: bash
         run: |
           set -euo pipefail
@@ -53,20 +53,17 @@ jobs:
             exit 1
           fi
 
-      - name: Smoke test project startup
+      - name: Smoke test stable game startup
         shell: bash
         run: |
           set -euo pipefail
           godot --headless --path . --quit-after 5 2>&1 | tee /tmp/riftforge-startup.log
-          # Godot's dummy renderer reports a known mesh_get_surface_count null warning
-          # for procedural 3D meshes in headless mode. It does not occur in the Web renderer.
-          # Reject every other Godot error, including GDScript/runtime failures.
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/riftforge-startup.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then
             echo 'Godot reported actionable startup errors. Refusing to publish.' >&2
             exit 1
           fi
 
-      - name: Regression test mobile skill controls
+      - name: Regression test stable mobile skill controls
         shell: bash
         run: |
           set -euo pipefail
@@ -77,7 +74,7 @@ jobs:
             exit 1
           fi
 
-      - name: Export Web (single-threaded)
+      - name: Export stable Web game (unchanged root URL)
         shell: bash
         run: |
           set -euo pipefail
@@ -92,7 +89,37 @@ jobs:
           test -n "$(find build/web -maxdepth 1 -name '*.pck' -print -quit)"
           cp fonts/OFL.txt build/web/NOTO_FONT_LICENSE.txt
 
-      - name: Upload browser build
+      - name: Checkout pinned experimental Phase 2 build in separate directory
+        uses: actions/checkout@v4
+        with:
+          ref: 48269e22b68ef5cefea494c5f1ad6ccea3471f37
+          path: phase2-src
+          persist-credentials: false
+
+      - name: Test and export independent Phase 2 preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p phase2-src/fonts build/web/preview/phase2
+          cp fonts/NotoSansTC.ttf phase2-src/fonts/NotoSansTC.ttf
+          cp fonts/OFL.txt build/web/preview/phase2/NOTO_FONT_LICENSE.txt
+          godot --headless --path phase2-src --editor --quit 2>&1 | tee /tmp/phase2-import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase2-import.log; then exit 1; fi
+          for spec in 'test_phase2_skill_core.gd|PHASE2 TEST RESULT: 20 passed / 0 failed' 'test_phase2_integration.gd|PHASE2 INTEGRATION RESULT: 21 passed / 0 failed' 'test_phase2_cast_failures.gd|PHASE2 CAST FAILURES:' 'test_phase2_multitouch.gd|PHASE2 MULTITOUCH: 9 passed / 0 failed'; do
+            script="${spec%%|*}"
+            marker="${spec#*|}"
+            godot --headless --path phase2-src --script "res://tests/$script" 2>&1 | tee "/tmp/phase2-${script}.log"
+            grep -Fq "$marker" "/tmp/phase2-${script}.log"
+            if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' "/tmp/phase2-${script}.log" | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+          done
+          godot --headless --path phase2-src --export-release 'Web' "$GITHUB_WORKSPACE/build/web/preview/phase2/index.html" 2>&1 | tee /tmp/phase2-export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase2-export.log; then exit 1; fi
+          test -s build/web/preview/phase2/index.html
+          test -n "$(find build/web/preview/phase2 -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/web/preview/phase2 -maxdepth 1 -name '*.pck' -print -quit)"
+          echo 'PHASE2 PREVIEW READY INSIDE WEB ARTIFACT'
+
+      - name: Upload browser builds
         uses: actions/upload-artifact@v4
         with:
           name: riftforge-web
@@ -100,7 +127,7 @@ jobs:
           if-no-files-found: error
 
   deploy:
-    name: Publish game on GitHub Pages
+    name: Publish stable game and isolated preview on GitHub Pages
     needs: web
     runs-on: ubuntu-24.04
     permissions:
@@ -111,7 +138,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Download exported game
+      - name: Download exported games
         uses: actions/download-artifact@v4
         with:
           name: riftforge-web
@@ -120,7 +147,7 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Package game for Pages
+      - name: Package games for Pages
         uses: actions/upload-pages-artifact@v4
         with:
           path: build/web/
