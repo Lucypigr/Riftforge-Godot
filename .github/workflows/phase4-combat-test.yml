@@ -1,0 +1,66 @@
+name: Phase 4 combat V2 regression
+on:
+  push:
+    branches: [feature/phase4-combat-v2]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare licensed Chinese font and Godot templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fonts "$HOME/.local/share/godot/export_templates" build/phase4
+          cp -a /root/.local/share/godot/export_templates/. "$HOME/.local/share/godot/export_templates/"
+          wget --quiet --tries=3 --timeout=45 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf' -O fonts/NotoSansTC.ttf
+          test "$(stat -c%s fonts/NotoSansTC.ttf)" -gt 1000000
+      - name: Godot import rejects script errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --editor --quit 2>&1 | tee import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' import.log; then exit 1; fi
+      - name: Combat V2 deterministic and scene-level regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase4_combat_v2.gd 2>&1 | tee combat.log
+          grep -Eq '^PHASE4 COMBAT V2: [1-9][0-9]* passed / 0 failed$' combat.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' combat.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Phase 3 backpack regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase3_inventory.gd 2>&1 | tee inventory.log
+          grep -Eq '^PHASE3 INVENTORY: [1-9][0-9]* passed / 0 failed$' inventory.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' inventory.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Phase 2 skill math and cast feedback regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_skill_core.gd 2>&1 | tee skill.log
+          grep -q 'PHASE2 TEST RESULT: 20 passed / 0 failed' skill.log
+          godot --headless --path . --script res://tests/test_phase2_cast_feedback.gd 2>&1 | tee feedback.log
+          grep -q 'PHASE2 CAST FEEDBACK: 11 passed / 0 failed' feedback.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' skill.log feedback.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Two-finger mobile controls regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_multitouch.gd 2>&1 | tee touch.log
+          grep -q 'PHASE2 MULTITOUCH: 9 passed / 0 failed' touch.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' touch.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Export experimental Web build without publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --export-release Web build/phase4/index.html 2>&1 | tee export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' export.log; then exit 1; fi
+          test -s build/phase4/index.html
+          test -n "$(find build/phase4 -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/phase4 -maxdepth 1 -name '*.pck' -print -quit)"
+          echo 'PHASE4 WEB EXPORT READY, PRODUCTION UNCHANGED'
