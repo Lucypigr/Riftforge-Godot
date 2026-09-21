@@ -173,7 +173,7 @@ jobs:
       - name: Checkout CI-verified Phase 5 weapon loot experiment separately (not merged)
         uses: actions/checkout@v4
         with:
-          ref: 5a2bab57e0701c8f73a90b10e44fc04eeb895ecf
+          ref: 31e40069d39bef38f731007f93c284bd8aa285bb
           path: phase5-src
           persist-credentials: false
 
