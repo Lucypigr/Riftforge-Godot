@@ -71,7 +71,9 @@ func _run() -> void:
 	var legacy: Dictionary = runtime.resolve_projectile_hit(fire, target, {}, 0.99)
 	expect(int(legacy["damage"]) == 100, "legacy compatibility ignores new typed resistance dictionary")
 	runtime.use_combat_v2 = true
-	var converted: Dictionary = runtime.resolve_projectile_hit(fire, target, {}, 0.99)
+	# This assertion tests typed resistance selection, not accuracy. Misses are tested above.
+	# Disable accuracy only for this call; live attacks retain their normal hit rolls.
+	var converted: Dictionary = runtime.resolve_projectile_hit(fire, target, {"can_miss": false}, 0.99)
 	expect(int(converted["damage"]) == 75, "same shared runtime selects V2 typed resistance")
 	var game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
