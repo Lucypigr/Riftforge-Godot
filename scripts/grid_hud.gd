@@ -1,49 +1,54 @@
 extends "res://scripts/hud.gd"
-## Grid is a gameplay state, not decorative slots; equip/move uses grid validation.
+## Grid is gameplay state, not decorative slots; equip/move uses grid validation.
 const Grid = preload("res://scripts/grid_inventory.gd")
 const GridView = preload("res://scripts/inventory_grid_view.gd")
+const INVENTORY_PANEL_SIZE := Vector2(790, 550)
 var _grid_view: Control
 var _grid_status: Label
 var _overflow_choices: OptionButton
 var _selected_index := -1
 
 func _build_inventory() -> void:
-	_inventory_panel = _panel(-265, -237, 265, 237, true)
+	_inventory_panel = _panel(-395, -275, 395, 275, true)
 	_inventory_panel.visible = false
 	var layout := VBoxContainer.new()
 	layout.add_theme_constant_override("separation", 7)
 	_inventory_panel.add_child(layout)
-	layout.add_child(_label("背包｜12 × 5 格", 22))
-	_equipment = _label("", 15)
+	layout.add_child(_label("背包｜12 × 5 格", 23))
+	_equipment = _label("", 16)
 	layout.add_child(_equipment)
 	_grid_view = GridView.new()
-	_grid_view.custom_minimum_size = Vector2(444, 185)
+	_grid_view.custom_minimum_size = Vector2(624, 260)
+	_grid_view.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	layout.add_child(_grid_view)
 	_grid_view.cell_pressed.connect(_on_grid_cell)
-	layout.add_child(_label("點物品選取，再點空格移動；格子不足無法拾取。", 13))
-	_item_details = _label("點選物品檢視屬性", 14)
-	_item_details.custom_minimum_size = Vector2(0, 43)
+	layout.add_child(_label("點物品選取，再點空格移動；格子不足無法拾取。", 15))
+	_item_details = _label("點選物品檢視屬性", 16)
+	_item_details.custom_minimum_size = Vector2(0, 48)
 	_item_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(_item_details)
-	_grid_status = _label("", 13)
+	_grid_status = _label("", 15)
 	layout.add_child(_grid_status)
 	_overflow_choices = OptionButton.new()
 	_overflow_choices.visible = false
 	_overflow_choices.item_selected.connect(_on_overflow_selected)
 	layout.add_child(_overflow_choices)
 	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", 6)
+	actions.add_theme_constant_override("separation", 12)
 	layout.add_child(actions)
 	var equip_button := Button.new()
 	equip_button.text = "裝備所選"
+	equip_button.custom_minimum_size = Vector2(145, 46)
 	equip_button.pressed.connect(_equip_selected)
 	actions.add_child(equip_button)
 	var tidy_button := Button.new()
 	tidy_button.text = "整理格子"
+	tidy_button.custom_minimum_size = Vector2(145, 46)
 	tidy_button.pressed.connect(_repack)
 	actions.add_child(tidy_button)
 	var close_button := Button.new()
 	close_button.text = "關閉"
+	close_button.custom_minimum_size = Vector2(145, 46)
 	close_button.pressed.connect(toggle_inventory)
 	actions.add_child(close_button)
 
