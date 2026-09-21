@@ -1,6 +1,5 @@
 extends "res://scripts/hud.gd"
-## Grid-first, original ARPG layout: real 120-cell bag and separate equipped-gear tab.
-## No permanently visible tutorial paragraphs or item-detail block under the bag.
+## Grid-first ARPG layout: 120 storage cells and a separate equipped-gear tab.
 const Grid = preload("res://scripts/grid_inventory.gd")
 const GridView = preload("res://scripts/inventory_grid_view.gd")
 const INVENTORY_PANEL_SIZE := Vector2(790, 550)
@@ -109,8 +108,7 @@ func _build_inventory() -> void:
 	_grid_view.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_bag_page.add_child(_grid_view)
 	_grid_view.cell_pressed.connect(_on_grid_cell)
-
-	# POE-style contextual detail strip: only occupies space after item selection.
+	# Contextual details appear only on selection, rather than occupying a permanent footer.
 	_item_details = _label("", 15)
 	_item_details.custom_minimum_size = Vector2(0, 43)
 	_item_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -217,7 +215,7 @@ func _inspect_equipped(slot: String) -> void:
 	_equipment_details.text = "%s｜%s [%s]\n傷害 +%s　生命 +%s　護甲 %s%%" % ["武器" if slot == "weapon" else "護甲", str(item.get("name", "未知")), str(item.get("rarity", "普通")), str(item.get("damage", 0)), str(item.get("hp", 0)), str(int(float(item.get("armor", 0.0)) * 100.0))]
 
 func _update_selection() -> void:
-	var has_selection := _selected_index >= 0 and _selected_index < game.inventory.size()
+	var has_selection: bool = _selected_index >= 0 and _selected_index < game.inventory.size()
 	_item_details.visible = has_selection and _active_tab == 0
 	_equip_button.disabled = not has_selection
 	if not has_selection:
