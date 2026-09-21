@@ -37,7 +37,6 @@ func _initialize() -> void:
 	enabled = DisplayServer.is_touchscreen_available()
 	if OS.has_feature("web"):
 		# Godot 4.3 has JavaScriptBridge.eval(), but NOT JavaScriptBridge.is_available().
-		# The old nonexistent method caused a script parse error, hiding the whole joystick.
 		var browser_touch = JavaScriptBridge.eval("window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || location.search.includes('touch=1')")
 		enabled = enabled or bool(browser_touch)
 	game.mobile_active = enabled
@@ -140,7 +139,8 @@ func _end_touch(id: int) -> void:
 		dragging_aim = false
 	elif id == nova_id:
 		nova_id = -1
-		if not game.ui_open and game.zone == "field" and game._nova_cd <= 0.0:
+		# The camp is safe but skills can be previewed there. Only enemy spawning is field-only.
+		if not game.ui_open and game._nova_cd <= 0.0:
 			game.cast_nova()
 	else:
 		return
@@ -183,7 +183,8 @@ func _auto_aim() -> void:
 			game.aim_direction = nearest.normalized()
 
 func _try_attack() -> void:
-	if not game.ui_open and game.zone == "field" and game._bolt_cd <= 0.0:
+	# Do not silently discard mobile skill input just because the player is in camp.
+	if not game.ui_open and game._bolt_cd <= 0.0:
 		game.cast_bolt()
 
 func _process(_delta: float) -> void:
