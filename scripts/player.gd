@@ -103,5 +103,6 @@ func receive_damage(raw_damage: float) -> void:
 
 func refresh_equipment() -> void:
 	var old_max: float = max_hp
-	max_hp = 120.0 + 6.0 * float(game.level - 1) + float(game.equipment["armor"].get("hp", 0.0))
+	# A weapon's vitality affix is an equipped bonus too, including after loading an older save.
+	max_hp = 120.0 + 6.0 * float(game.level - 1) + float(game.equipment["armor"].get("hp", 0.0)) + float(game.equipment["weapon"].get("hp", 0.0))
 	hp = clampf(hp + max_hp - old_max, 1.0, max_hp)
