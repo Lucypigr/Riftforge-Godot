@@ -110,7 +110,7 @@ jobs:
       - name: Checkout pinned Phase 3 inventory separately (not merged)
         uses: actions/checkout@v4
         with:
-          ref: 6065ec996ab084b8351f8b446abba616eb1b0a07
+          ref: 033330793be9e52aed723f68c9c6e3d037a03cc1
           path: phase3-src
           persist-credentials: false
 
