@@ -33,6 +33,16 @@ jobs:
             echo 'Actionable integration error detected' >&2
             exit 1
           fi
+      - name: Test blocked skill feedback and recovery in playable scene
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_cast_feedback.gd 2>&1 | tee phase2-feedback.log
+          grep -q 'PHASE2 CAST FEEDBACK: 11 passed / 0 failed' phase2-feedback.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' phase2-feedback.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then
+            echo 'Actionable cast-feedback error detected' >&2
+            exit 1
+          fi
       - name: Validate experimental Web export without publishing
         shell: bash
         run: |
