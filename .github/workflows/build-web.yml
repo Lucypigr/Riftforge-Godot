@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   web:
-    name: Export stable game and isolated Phase 2 preview
+    name: Export stable game and isolated Phase 2/3 previews
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -77,7 +77,7 @@ jobs:
           test -n "$(find build/web -maxdepth 1 -name '*.pck' -print -quit)"
           cp fonts/OFL.txt build/web/NOTO_FONT_LICENSE.txt
 
-      - name: Checkout pinned experiment separately (not merged)
+      - name: Checkout pinned Phase 2 experiment separately (not merged)
         uses: actions/checkout@v4
         with:
           ref: 48269e22b68ef5cefea494c5f1ad6ccea3471f37
@@ -107,7 +107,38 @@ jobs:
           test -n "$(find build/web/preview/phase2 -maxdepth 1 -name '*.pck' -print -quit)"
           echo 'PHASE2 PREVIEW READY INSIDE WEB ARTIFACT'
 
-      - name: Upload both browser builds
+      - name: Checkout pinned Phase 3 inventory separately (not merged)
+        uses: actions/checkout@v4
+        with:
+          ref: b9caba2c789bd25781cae862f12e1b5fbf394e77
+          path: phase3-src
+          persist-credentials: false
+
+      - name: Test and export Phase 3 to preview subdirectory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p phase3-src/fonts build/web/preview/phase3
+          cp fonts/NotoSansTC.ttf phase3-src/fonts/NotoSansTC.ttf
+          cp fonts/OFL.txt build/web/preview/phase3/NOTO_FONT_LICENSE.txt
+          godot --headless --path phase3-src --editor --quit 2>&1 | tee /tmp/phase3-import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase3-import.log; then exit 1; fi
+          for spec in 'test_phase3_inventory.gd|PHASE3 INVENTORY:' 'test_phase2_skill_core.gd|PHASE2 TEST RESULT: 20 passed / 0 failed' 'test_phase2_multitouch.gd|PHASE2 MULTITOUCH: 9 passed / 0 failed'; do
+            script="${spec%%|*}"
+            marker="${spec#*|}"
+            godot --headless --path phase3-src --script "res://tests/$script" 2>&1 | tee "/tmp/phase3-${script}.log"
+            grep -Fq "$marker" "/tmp/phase3-${script}.log"
+            if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' "/tmp/phase3-${script}.log" | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+            if grep -Eq '^PHASE3 INVENTORY: [1-9][0-9]* passed / 0 failed$' "/tmp/phase3-${script}.log"; then :; elif [[ "$script" == test_phase3_inventory.gd ]]; then exit 1; fi
+          done
+          godot --headless --path phase3-src --export-release 'Web' "$GITHUB_WORKSPACE/build/web/preview/phase3/index.html" 2>&1 | tee /tmp/phase3-export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase3-export.log; then exit 1; fi
+          test -s build/web/preview/phase3/index.html
+          test -n "$(find build/web/preview/phase3 -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/web/preview/phase3 -maxdepth 1 -name '*.pck' -print -quit)"
+          echo 'PHASE3 PREVIEW READY INSIDE WEB ARTIFACT'
+
+      - name: Upload all three browser builds
         uses: actions/upload-artifact@v4
         with:
           name: riftforge-web
@@ -115,7 +146,7 @@ jobs:
           if-no-files-found: error
 
   deploy:
-    name: Publish stable game and isolated preview on GitHub Pages
+    name: Publish stable game and isolated previews on GitHub Pages
     needs: web
     runs-on: ubuntu-24.04
     permissions:
