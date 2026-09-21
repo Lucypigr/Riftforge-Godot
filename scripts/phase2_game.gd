@@ -62,6 +62,10 @@ func _skill_blocked(reason: String, skill_name: String, cost: int) -> void:
 		_: return  # Cooldowns are displayed on the HUD; avoid spam.
 	_skill_notice_wait = 0.9
 
+func _offensive_ability() -> float:
+	# No hidden source-game data: transparent Riftforge progression and future weapon-affix hook.
+	return 1000.0 + 8.0 * float(level - 1) + float(equipment["weapon"].get("offensive_ability", 0.0))
+
 func cast_bolt() -> void:
 	if _skill_runtime == null or not is_instance_valid(player) or ui_open:
 		return
@@ -79,7 +83,8 @@ func cast_bolt() -> void:
 	var count: int = maxi(1, int(gem_mods.get("projectile_count", 1)))
 	var on_hit_mods: Dictionary = {
 		"flat_damage": float(equipment["weapon"].get("damage", 0.0)),
-		"more_multiplier": float(gem_mods.get("damage_multiplier", 1.0))
+		"more_multiplier": float(gem_mods.get("damage_multiplier", 1.0)),
+		"offensive_ability": _offensive_ability()
 	}
 	var spawn: Dictionary = result["shots"][0]
 	for shot in range(count):
@@ -106,8 +111,13 @@ func cast_nova() -> void:
 		var enemy_id: int = enemy.get_instance_id()
 		enemies_by_id[enemy_id] = enemy
 		targets.append({"id": enemy_id, "hp": enemy.hp, "position": enemy.global_position,
-			"resistance": 0.08 if enemy.boss else 0.0})
-	var modifiers: Dictionary = {"flat_damage": float(equipment["weapon"].get("damage", 0.0)) * 0.7}
+			"resistance": 0.08 if enemy.boss else 0.0,
+			"defensive_ability": enemy.defensive_ability,
+			"armor_rating": enemy.armor_rating,
+			"armor_absorption": enemy.armor_absorption,
+			"resistances": enemy.damage_resistances})
+	var modifiers: Dictionary = {"flat_damage": float(equipment["weapon"].get("damage", 0.0)) * 0.7,
+		"offensive_ability": _offensive_ability()}
 	var result: Dictionary = _skill_runtime.cast(_nova_skill, player.global_position, Vector3.ZERO, targets, modifiers, randf())
 	if not bool(result.get("ok", false)):
 		_skill_blocked(str(result.get("reason", "")), "震盪環", 25)

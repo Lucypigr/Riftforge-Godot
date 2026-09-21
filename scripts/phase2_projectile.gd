@@ -1,5 +1,5 @@
 extends "res://scripts/projectile.gd"
-## Projectile visuals/motion use the original game, but damage is resolved AT collision.
+## Projectile visuals/motion use original game, but damage is resolved AT collision.
 var combat_runtime
 var skill_definition
 var on_hit_modifiers: Dictionary = {}
@@ -40,13 +40,21 @@ func _physics_process(delta: float) -> void:
 		if closest.distance_squared_to(enemy.global_position) > hit_radius * hit_radius:
 			continue
 		var target: Dictionary = {"hp": enemy.hp, "position": enemy.global_position,
-			"resistance": 0.08 if enemy.boss else 0.0}
+			"resistance": 0.08 if enemy.boss else 0.0,
+			"defensive_ability": enemy.defensive_ability,
+			"armor_rating": enemy.armor_rating,
+			"armor_absorption": enemy.armor_absorption,
+			"resistances": enemy.damage_resistances}
 		var hit: Dictionary = combat_runtime.resolve_projectile_hit(skill_definition, target, on_hit_modifiers, randf())
 		if not bool(hit.get("ok", false)):
 			continue
 		_hit_ids.append(enemy_id)
-		enemy.take_hit(int(hit["damage"]), start)
-		game.spawn_burst(closest, Color("#ffcb7b"), 0.72)
+		if bool(hit.get("hit", true)) and int(hit.get("damage", 0)) > 0:
+			enemy.take_hit(int(hit["damage"]), start)
+			game.spawn_burst(closest, Color("#ffe29b") if bool(hit.get("critical", false)) else Color("#ffcb7b"), 0.95 if bool(hit.get("critical", false)) else 0.72)
+		else:
+			# A miss consumes the impact but never knocks back an enemy or applies a zero-damage hit.
+			game.spawn_burst(closest, Color("#94aaba"), 0.40)
 		if pierce_remaining <= 0:
 			queue_free()
 			return

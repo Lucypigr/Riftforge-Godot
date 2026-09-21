@@ -69,9 +69,11 @@ func _run() -> void:
 	armor["armor"] = 0.24
 	Grid.try_add(game.inventory, armor)
 	var hp_before: float = game.player.max_hp
+	var previous_armor_hp: float = float(game.equipment["armor"].get("hp", 0.0))
 	game.equip_item(0)
 	expect(game.equipment["armor"]["name"] == "生命胸甲" and game.inventory.size() == 1, "equipment swaps original old item into bag")
-	expect(game.player.max_hp == hp_before + 33.0, "equipped armor modifies actual playable health")
+	# Saved test fixtures may already equip an HP-granting chest. Assert the actual stat delta.
+	expect(is_equal_approx(game.player.max_hp, hp_before + 33.0 - previous_armor_hp), "equipped armor updates actual health by new minus old stats")
 	game.hud.toggle_inventory()
 	expect(game.hud.inventory_open and game.hud._bag_page.visible and not game.hud._equipment_page.visible, "open bag defaults to backpack tab")
 	expect(game.hud._grid_view.items.size() == 1 and game.hud._grid_view.page == 0, "first page shows real item state")
