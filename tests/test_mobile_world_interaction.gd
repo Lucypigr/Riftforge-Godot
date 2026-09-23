@@ -131,6 +131,8 @@ func _run() -> void:
 	await process_frame
 	check(game.zone == zone_before_e and game.skill_cooldown("shock_nova") > 0.0, "E executes only its assigned skill and does not activate the portal")
 
+	# Isolate the desktop pickup assertion from the preceding full-bag scenario.
+	game.inventory.clear()
 	var pc_drop = Loot.new()
 	pc_drop.initialize(sample("gem", "PC F 拾取"))
 	pc_drop.position = game.player.position + Vector3(0.2, -0.5, 0)
