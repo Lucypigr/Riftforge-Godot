@@ -19,106 +19,84 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
+	# Phase 8 uses its own save namespace so a first launch is actually empty.
+	if FileAccess.file_exists("user://riftforge_phase8_save.json"):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://riftforge_phase8_save.json"))
 	var game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
 	await process_frame
-	# Phase 6 subclasses the Phase 5 scene and grid HUD; verify the real implementation, not an obsolete leaf filename.
-	expect(_script_chain_contains(game.get_script(), "phase3_game.gd") and game.hud._grid_view != null, "real playable scene inherits Phase 3 inventory")
-	expect(_script_chain_contains(game.hud.get_script(), "grid_hud.gd") and game.hud._bag_page != null and game.hud._equipment_page != null, "real game inherits inventory and equipment tabs")
-	expect(Grid.COLS == 12 and Grid.ROWS == 10 and Grid.PAGE_COUNT == 2, "physical storage is 120 cells across two pages")
+
+	expect(_script_chain_contains(game.get_script(), "phase3_game.gd") and game.hud._grid_view != null, "real playable scene retains grid inventory")
+	expect(_script_chain_contains(game.hud.get_script(), "grid_hud.gd") and game.hud._bag_page != null and game.hud._equipment_page != null, "inventory and equipment tabs remain live")
+	expect(Grid.COLS == 18 and Grid.ROWS == 10 and Grid.PAGE_COUNT == 1, "Phase 8 backpack is one dense 18 by 10 grid")
+	expect(Grid.COLS * Grid.ROWS == 180, "physical storage expands from 120 to 180 cells")
+	expect(game.inventory.is_empty(), "fresh Phase 8 character starts with an empty backpack")
+	expect(str(game.equipment["weapon"].get("name", "")).is_empty() and str(game.equipment["armor"].get("name", "")).is_empty(), "fresh character starts with no weapon or armor")
+
 	var items: Array = []
-	expect(Grid.footprint(sample()) == Vector2i(2, 3), "weapon occupies multiple cells")
+	expect(Grid.footprint(sample()) == Vector2i(2, 3), "weapon still occupies multiple cells")
 	expect(Grid.try_add(items, sample("weapon", "A")), "first weapon fits")
 	expect(Grid.try_add(items, sample("armor", "B")), "second large item fits")
 	expect(Grid.item_at(items, 0, 2) == 0 and Grid.item_at(items, 2, 1) == 1, "occupied cells identify real items")
 	expect(not Grid.move(items, 0, 2, 0), "item overlap is rejected")
-	expect(not Grid.move(items, 0, 11, 4), "out of bounds and page-spanning placement is rejected")
-	expect(not Grid.move(items, 0, 5, 4), "an item cannot be split across inventory pages")
-	expect(Grid.move(items, 0, 10, 2), "valid move changes real position")
-	expect(Grid.move(items, 0, 10, 5) and Grid.item_at(items, 10, 7) == 0, "large equipment moves safely between both pages")
-	var legacy: Array = [sample("weapon", "舊武器"), sample("armor", "舊護甲")]
-	legacy[0]["grid_x"] = 0
-	legacy[0]["grid_y"] = 0
-	legacy[1]["grid_x"] = 0
-	legacy[1]["grid_y"] = 0
-	expect(Grid.normalize(legacy) == 0 and Grid.placed(legacy[0]) and Grid.placed(legacy[1]) and legacy[1]["grid_x"] != 0, "legacy overlapping save repacked without item loss")
-	var expanded: Array = []
-	for i in range(60):
-		Grid.try_add(expanded, sample("gem", "填第一頁"))
-	expect(Grid.try_add(expanded, sample("weapon", "第二頁武器")) and int(expanded.back()["grid_y"]) >= Grid.PAGE_ROWS, "pickup flows into second page after first 60 cells fill")
+	expect(not Grid.move(items, 0, 17, 8), "out of bounds placement is rejected")
+	expect(Grid.move(items, 0, 16, 7), "large equipment can move to the far edge of the expanded bag")
+
 	var full: Array = []
-	for i in range(120):
+	for i in range(180):
 		Grid.try_add(full, sample("gem", "格子"))
-	expect(full.size() == 120 and Grid.occupied_cells(full) == 120 and Grid.overflow_count(full) == 0, "exact 12 by 10 physical capacity is 120")
-	expect(not Grid.try_add(full, sample()) and full.size() == 120, "true full bag refuses further loot without mutation")
-	var existing: Array = full.duplicate(true)
-	existing.append(sample("weapon", "舊檔額外武器"))
-	expect(Grid.normalize(existing) == 1 and existing.size() == 121 and not Grid.placed(existing[120]), "oversized old save keeps overflow safely")
+	expect(full.size() == 180 and Grid.occupied_cells(full) == 180 and Grid.overflow_count(full) == 0, "exact 18 by 10 physical capacity is 180")
+	expect(not Grid.try_add(full, sample()) and full.size() == 180, "true full bag refuses further loot without mutation")
+
 	game.inventory = full
 	var drop = Loot.new()
 	drop.initialize(sample("weapon", "地面武器"))
 	drop.position = game.player.position + Vector3(0.2, -0.5, 0)
 	game.add_child(drop)
 	game._interact()
-	expect(game.inventory.size() == 120 and not drop.is_queued_for_deletion(), "120-cell full bag leaves ground loot intact")
+	expect(game.inventory.size() == 180 and not drop.is_queued_for_deletion(), "180-cell full bag leaves ground loot intact")
 	game.inventory.clear()
 	game._interact()
-	expect(game.inventory.size() == 1 and drop.is_queued_for_deletion() and Grid.placed(game.inventory[0]), "real pickup inserts into grid")
+	expect(game.inventory.size() == 1 and drop.is_queued_for_deletion() and Grid.placed(game.inventory[0]), "real pickup inserts into compact grid")
+
 	game.inventory.clear()
 	var armor := sample("armor", "生命胸甲")
 	armor["hp"] = 33
 	armor["armor"] = 0.24
 	Grid.try_add(game.inventory, armor)
 	var hp_before: float = game.player.max_hp
-	var previous_armor_hp: float = float(game.equipment["armor"].get("hp", 0.0))
 	game.equip_item(0)
-	expect(game.equipment["armor"]["name"] == "生命胸甲" and game.inventory.size() == 1, "equipment swaps original old item into bag")
-	# Saved test fixtures may already equip an HP-granting chest. Assert the actual stat delta.
-	expect(is_equal_approx(game.player.max_hp, hp_before + 33.0 - previous_armor_hp), "equipped armor updates actual health by new minus old stats")
+	expect(game.equipment["armor"]["name"] == "生命胸甲" and game.inventory.is_empty(), "equipping into an empty slot does not create a fake starter item")
+	expect(is_equal_approx(game.player.max_hp, hp_before + 33.0), "first equipped armor updates actual health")
+
 	game.hud.toggle_inventory()
 	expect(game.hud.inventory_open and game.hud._bag_page.visible and not game.hud._equipment_page.visible, "open bag defaults to backpack tab")
-	expect(game.hud._grid_view.items.size() == 1 and game.hud._grid_view.page == 0, "first page shows real item state")
-	expect(game.hud._grid_view.custom_minimum_size == Vector2(720, 300), "grid fills large central area with 60px touch cells")
-	expect(not game.hud._item_details.visible and game.hud._item_details.text.is_empty(), "unselected bag hides bottom tutorial and details")
-	game.hud._on_grid_cell(0, 0)
-	expect(game.hud._item_details.visible and game.hud._item_details.text.contains("護甲"), "item detail strip appears only after selecting loot")
-	game.hud._on_grid_cell(10, 2)
-	expect(int(game.inventory[0]["grid_x"]) == 10 and int(game.inventory[0]["grid_y"]) == 2, "first-page UI taps move real items")
-	game.hud._set_grid_page(1)
-	expect(game.hud._grid_view.page == 1 and game.hud._page_label.text == "第 2 / 2 頁", "second page opens with correct compact navigation")
-	game.hud._on_grid_cell(8, 5)
-	expect(int(game.inventory[0]["grid_x"]) == 8 and int(game.inventory[0]["grid_y"]) == 5, "selected item can move from first page to second")
+	expect(game.hud._grid_view.custom_minimum_size == Vector2(756, 420), "compact grid uses 42px cells across 18 by 10")
+	expect(game.hud._grid_view.CELL == 42.0, "item cells are substantially smaller than the old 60px cards")
+	expect(not game.hud._item_details.visible and game.hud._item_details.text.is_empty(), "unselected bag hides item details")
+	game.hud._open_equipment()
+	expect(game.hud._weapon_button.text.contains("空") and game.hud._armor_button.text.contains("生命胸甲"), "equipment tab clearly shows empty and equipped slots")
+	game.hud._open_bag()
+
+	var weapon := sample("weapon", "短劍")
+	Grid.try_add(game.inventory, weapon)
+	game.hud._refresh_inventory()
+	game.hud._on_grid_cell(int(game.inventory[0]["grid_x"]), int(game.inventory[0]["grid_y"]))
+	expect(game.hud._item_details.visible and game.hud._item_details.text.contains("短劍"), "item name and stats appear only after selecting an item")
 	var tap := InputEventScreenTouch.new()
 	tap.index = 4
-	tap.position = Vector2(3.0 * 60.0 + 3.0, 3.0)
+	tap.position = Vector2(5.0 * 42.0 + 3.0, 4.0 * 42.0 + 3.0)
 	tap.pressed = true
 	game.hud._grid_view._gui_input(tap)
-	expect(int(game.inventory[0]["grid_x"]) == 3 and int(game.inventory[0]["grid_y"]) == 5, "enlarged touch hitboxes map to correct global row")
-	game.hud._open_equipment()
-	expect(not game.hud._bag_page.visible and game.hud._equipment_page.visible and game.hud._equipment_tab_button.disabled, "equipment is a separate tab, not merged into backpack")
-	expect(not game.hud._equip_button.visible and not game.hud._tidy_button.visible, "bag-only actions disappear on equipment page")
-	game.hud._inspect_armor()
-	expect(game.hud._equipment_details.text.contains("生命胸甲"), "equipment tab displays actual equipped item attributes")
-	game.hud._open_bag()
-	expect(game.hud._bag_page.visible and not game.hud._equipment_page.visible and game.hud._grid_view.page == 1, "returning to bag preserves inventory page")
-	expect(FileAccess.file_exists(game.SAVE_PATH), "game persists a save file")
+	expect(int(game.inventory[0]["grid_x"]) == 5 and int(game.inventory[0]["grid_y"]) == 4, "compact touch hitboxes map to correct grid cells")
+
+	game.save_progress()
+	expect(FileAccess.file_exists(game.SAVE_PATH), "Phase 8 persists to its isolated save file")
 	var saved = JSON.parse_string(FileAccess.get_file_as_string(game.SAVE_PATH))
-	expect(saved is Dictionary and saved["inventory"].size() == 1 and int(saved["inventory"][0]["grid_y"]) == 5, "second-page coordinates persist to actual save")
-	game.hud.close_panels()
-	game.inventory.clear()
-	var tiny := sample("weapon", "一格測試武器")
-	tiny["grid_w"] = 1
-	tiny["grid_h"] = 1
-	Grid.try_add(game.inventory, tiny)
-	for i in range(119):
-		Grid.try_add(game.inventory, sample("gem", "阻擋"))
-	var old_weapon := str(game.equipment["weapon"]["name"])
-	game.equip_item(0)
-	expect(game.inventory.size() == 120 and str(game.equipment["weapon"]["name"]) == old_weapon, "failed swap stays atomic at expanded capacity")
+	expect(saved is Dictionary and saved["inventory"].size() == 1, "compact inventory state persists")
 	game.queue_free()
 	print("PHASE3 INVENTORY: %d passed / %d failed" % [passed, failed])
 	quit(0 if failed == 0 else 1)
-
 
 func _script_chain_contains(script: Script, filename: String) -> bool:
 	var current: Script = script

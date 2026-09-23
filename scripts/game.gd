@@ -8,7 +8,7 @@ const HUD_SCRIPT = preload("res://scripts/hud.gd")
 const ITEMS = preload("res://scripts/items.gd")
 const GEMS = preload("res://scripts/gem_rules.gd")
 const COMBAT = preload("res://scripts/combat_math.gd")
-const SAVE_PATH = "user://riftforge_save.json"
+const SAVE_PATH = "user://riftforge_phase8_save.json"
 
 var player
 var hud
@@ -466,7 +466,7 @@ func show_damage(at: Vector3, amount: int, tint: Color) -> void:
 	tween.tween_callback(text.queue_free)
 
 func _load_progress() -> void:
-	equipment = {"weapon": ITEMS.starting_weapon(), "armor": ITEMS.starting_armor()}
+	equipment = {"weapon": {"slot": "weapon"}, "armor": {"slot": "armor"}}
 	if not FileAccess.file_exists(SAVE_PATH):
 		return
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)

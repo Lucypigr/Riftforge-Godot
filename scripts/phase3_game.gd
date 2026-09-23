@@ -124,10 +124,11 @@ func equip_item(index: int) -> void:
 	var old_item: Dictionary = equipment[slot].duplicate(true)
 	var next_inventory: Array = inventory.duplicate(true)
 	next_inventory.remove_at(index)
-	# All changes commit together. A failed swap must not delete either item.
-	if not Grid.try_add(next_inventory, old_item):
-		hud.announce("交換裝備失敗：背包無法容納原裝備。")
-		return
+	# Empty slots do not create a fake placeholder item. Real swaps remain atomic.
+	if not str(old_item.get("name", "")).is_empty():
+		if not Grid.try_add(next_inventory, old_item):
+			hud.announce("交換裝備失敗：背包無法容納原裝備。")
+			return
 	selected.erase("grid_x")
 	selected.erase("grid_y")
 	inventory = next_inventory
