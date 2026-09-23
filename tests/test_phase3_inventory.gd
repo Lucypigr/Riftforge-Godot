@@ -23,8 +23,8 @@ func _run() -> void:
 	root.add_child(game)
 	await process_frame
 	# Phase 6 subclasses the Phase 5 scene and grid HUD; verify the real implementation, not an obsolete leaf filename.
-	expect(game.get_script().get_base_script().resource_path.ends_with("phase3_game.gd") and game.hud._grid_view != null, "real playable scene inherits Phase 3 inventory")
-	expect(game.hud.get_script().get_base_script().resource_path.ends_with("grid_hud.gd") and game.hud._bag_page != null and game.hud._equipment_page != null, "real game inherits inventory and equipment tabs")
+	expect(_script_chain_contains(game.get_script(), "phase3_game.gd") and game.hud._grid_view != null, "real playable scene inherits Phase 3 inventory")
+	expect(_script_chain_contains(game.hud.get_script(), "grid_hud.gd") and game.hud._bag_page != null and game.hud._equipment_page != null, "real game inherits inventory and equipment tabs")
 	expect(Grid.COLS == 12 and Grid.ROWS == 10 and Grid.PAGE_COUNT == 2, "physical storage is 120 cells across two pages")
 	var items: Array = []
 	expect(Grid.footprint(sample()) == Vector2i(2, 3), "weapon occupies multiple cells")
@@ -118,3 +118,12 @@ func _run() -> void:
 	game.queue_free()
 	print("PHASE3 INVENTORY: %d passed / %d failed" % [passed, failed])
 	quit(0 if failed == 0 else 1)
+
+
+func _script_chain_contains(script: Script, filename: String) -> bool:
+	var current: Script = script
+	while current != null:
+		if current.resource_path.ends_with(filename):
+			return true
+		current = current.get_base_script()
+	return false
