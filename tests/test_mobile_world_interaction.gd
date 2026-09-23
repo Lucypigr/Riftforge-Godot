@@ -79,7 +79,6 @@ func _run() -> void:
 	# Free one cell so an accidental UI interaction would be observable.
 	game.inventory.pop_back()
 	var count_with_space := game.inventory.size()
-	var friendly_before := _friendly_count(game)
 	var joy_center: Vector2 = controls._center("joy")
 	_touch(controls, 20, joy_center, true)
 	var drag := InputEventScreenDrag.new()
@@ -89,6 +88,7 @@ func _run() -> void:
 	check(game.mobile_move.x > 0.9, "joystick touch owns movement before UI opens")
 	_touch(controls, 21, controls._center("attack"), true)
 	check(controls.joy_id == 20 and controls.attack_id == 21, "movement and attack keep independent touch IDs")
+	var friendly_after_attack := _friendly_count(game)
 	_tap_action(controls, 22, "inventory")
 	check(game.ui_open and controls.joy_id == -1 and controls.attack_id == -1 and game.mobile_move.is_zero_approx(), "opening inventory cancels active combat touches")
 	_tap_action(controls, 23, "interact")
@@ -96,7 +96,7 @@ func _run() -> void:
 	_touch(controls, 25, controls._center("joy"), true)
 	controls._process(0.016)
 	check(game.inventory.size() == count_with_space and not full_drop.is_queued_for_deletion(), "inventory UI blocks mobile world interaction")
-	check(_friendly_count(game) == friendly_before and game.mobile_move.is_zero_approx(), "inventory UI blocks combat and movement touches")
+	check(_friendly_count(game) == friendly_after_attack and game.mobile_move.is_zero_approx(), "inventory UI blocks combat and movement touches")
 
 	game.hud.close_panels()
 	game.hud.toggle_gems()
@@ -113,8 +113,9 @@ func _run() -> void:
 	game._enter_zone("camp")
 	game.player.position = game._portal_position + Vector3(0, 0.9, 0)
 	Input.action_press("interact")
-	game._process(0.016)
+	await process_frame
 	Input.action_release("interact")
+	await process_frame
 	check(game.zone == "field", "PC F action near portal performs the real zone transition")
 
 	# E stays a skill input in Phase 7/8 and must never activate nearby world targets.
@@ -125,8 +126,9 @@ func _run() -> void:
 	game.player.position = game._portal_position + Vector3(0, 0.9, 0)
 	var zone_before_e := game.zone
 	Input.action_press("skill_slot_3")
-	game._process(0.016)
+	await process_frame
 	Input.action_release("skill_slot_3")
+	await process_frame
 	check(game.zone == zone_before_e and game.skill_cooldown("shock_nova") > 0.0, "E executes only its assigned skill and does not activate the portal")
 
 	var pc_drop = Loot.new()
@@ -135,8 +137,9 @@ func _run() -> void:
 	game.add_child(pc_drop)
 	var pc_before := game.inventory.size()
 	Input.action_press("interact")
-	game._process(0.016)
+	await process_frame
 	Input.action_release("interact")
+	await process_frame
 	check(game.inventory.size() == pc_before + 1 and pc_drop.is_queued_for_deletion(), "PC F action picks up nearby loot through the shared target path")
 
 	var e_drop = Loot.new()
@@ -146,8 +149,9 @@ func _run() -> void:
 	game._skill_runtime.advance(10.0)
 	game._sync_cooldowns()
 	Input.action_press("skill_slot_3")
-	game._process(0.016)
+	await process_frame
 	Input.action_release("skill_slot_3")
+	await process_frame
 	check(not e_drop.is_queued_for_deletion(), "E near loot does not trigger world pickup")
 
 	print("MOBILE WORLD INTERACTION: %d passed / %d failed" % [passed, failed])
