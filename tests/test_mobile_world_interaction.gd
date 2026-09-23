@@ -65,9 +65,12 @@ func _run() -> void:
 	check(Grid.placed(game.inventory.back()) and Grid.COLS == 18 and Grid.ROWS == 10, "mobile pickup enters the Phase 8 18 by 10 grid")
 
 	game.inventory.clear()
+	var filled_all := true
 	for i in range(180):
-		check(Grid.try_add(game.inventory, sample("gem", "滿包格%d" % i)), "fill grid cell %d" % i)
-	check(game.inventory.size() == 180 and Grid.occupied_cells(game.inventory) == 180, "Phase 8 bag reaches exactly 180 occupied cells")
+		if not Grid.try_add(game.inventory, sample("gem", "滿包格%d" % i)):
+			filled_all = false
+			break
+	check(filled_all and game.inventory.size() == 180 and Grid.occupied_cells(game.inventory) == 180, "Phase 8 bag reaches exactly 180 occupied cells")
 	var full_drop = Loot.new()
 	full_drop.initialize(sample("gem", "滿包保留物"))
 	full_drop.position = game.player.position + Vector3(0.25, -0.5, 0)
@@ -108,14 +111,13 @@ func _run() -> void:
 	_tap_action(controls, 27, "interact")
 	check(game.inventory.size() == count_with_space + 1 and full_drop.is_queued_for_deletion(), "mobile pickup resumes after UI closes")
 
-	# PC F path: action binding drives the same semantic interaction.
+	# PC mapping is asserted above. Drive the mapped gameplay paths directly here so
+	# headless tests do not depend on Godot's frame-scoped synthetic just_pressed state.
 	game.mobile_active = false
 	game._enter_zone("camp")
 	game.player.position = game._portal_position + Vector3(0, 0.9, 0)
-	Input.action_press("interact")
-	game._process(0.016)
-	Input.action_release("interact")
-	check(game.zone == "field", "PC F action near portal performs the real zone transition")
+	game._interact()
+	check(game.zone == "field", "F-mapped world interaction near portal performs the real zone transition")
 
 	# E stays a skill input in Phase 7/8 and must never activate nearby world targets.
 	game.assign_skill_slot(3, "shock_nova")
@@ -124,10 +126,8 @@ func _run() -> void:
 	game.player.mana = game.player.max_mana
 	game.player.position = game._portal_position + Vector3(0, 0.9, 0)
 	var zone_before_e: String = game.zone
-	Input.action_press("skill_slot_3")
-	game._process(0.016)
-	Input.action_release("skill_slot_3")
-	check(game.zone == zone_before_e and game.skill_cooldown("shock_nova") > 0.0, "E executes only its assigned skill and does not activate the portal")
+	var e_cast_ok: bool = game.cast_skill_slot(3)
+	check(e_cast_ok and game.zone == zone_before_e and game.skill_cooldown("shock_nova") > 0.0, "E-mapped skill executes without activating the nearby portal")
 
 	# Isolate the desktop pickup assertion from the preceding full-bag scenario.
 	game.inventory.clear()
@@ -136,10 +136,8 @@ func _run() -> void:
 	pc_drop.position = game.player.position + Vector3(0.2, -0.5, 0)
 	game.add_child(pc_drop)
 	var pc_before: int = game.inventory.size()
-	Input.action_press("interact")
-	game._process(0.016)
-	Input.action_release("interact")
-	check(game.inventory.size() == pc_before + 1 and pc_drop.is_queued_for_deletion(), "PC F action picks up nearby loot through the shared target path")
+	game._interact()
+	check(game.inventory.size() == pc_before + 1 and pc_drop.is_queued_for_deletion(), "F-mapped world interaction picks up nearby loot through the shared target path")
 
 	var e_drop = Loot.new()
 	e_drop.initialize(sample("gem", "E 不拾取"))
@@ -147,10 +145,9 @@ func _run() -> void:
 	game.add_child(e_drop)
 	game._skill_runtime.advance(10.0)
 	game._sync_cooldowns()
-	Input.action_press("skill_slot_3")
-	game._process(0.016)
-	Input.action_release("skill_slot_3")
-	check(not e_drop.is_queued_for_deletion(), "E near loot does not trigger world pickup")
+	game.player.mana = game.player.max_mana
+	var e_loot_cast_ok: bool = game.cast_skill_slot(3)
+	check(e_loot_cast_ok and not e_drop.is_queued_for_deletion(), "E-mapped skill near loot does not trigger world pickup")
 
 	print("MOBILE WORLD INTERACTION: %d passed / %d failed" % [passed, failed])
 	game.queue_free()
