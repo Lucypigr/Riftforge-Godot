@@ -59,12 +59,6 @@ func _process(delta: float) -> void:
 		if Input.is_action_pressed(SKILL_ACTIONS[slot]):
 			cast_skill_slot(slot)
 
-func _sync_cooldowns() -> void:
-	super._sync_cooldowns()
-	# Desktop hotbar's ember skill must not turn into a melee basic attack.
-	if not mobile_active and _skill_runtime != null and _bolt_skill != null:
-		_bolt_cd = _skill_runtime.remaining(_bolt_skill.skill_id)
-
 func installed_skill_gems() -> Array:
 	var result: Array = []
 	for gem_id in installed_active_gems:
