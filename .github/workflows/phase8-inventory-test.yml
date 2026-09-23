@@ -81,16 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           godot --headless --path . --script res://tests/test_mobile_world_interaction.gd 2>&1 | tee mobile-world.log
-          grep -Eq '^MOBILE WORLD INTERACTION: [1-9][0-9]* passed / 0 failed        shell: bash
-        run: |
-          set -euo pipefail
-          godot --headless --path . --export-release Web build/phase8/index.html 2>&1 | tee export.log
-          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' export.log; then exit 1; fi
-          test -s build/phase8/index.html
-          test -n "$(find build/phase8 -maxdepth 1 -name '*.wasm' -print -quit)"
-          test -n "$(find build/phase8 -maxdepth 1 -name '*.pck' -print -quit)"
-          echo 'PHASE8 WEB EXPORT READY'
- mobile-world.log
+          grep -Eq '^MOBILE WORLD INTERACTION: [1-9][0-9]* passed / 0 failed$' mobile-world.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' mobile-world.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
       - name: Export playable Phase 8 Web build
         shell: bash
