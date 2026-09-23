@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   web:
-    name: Export stable game and isolated Phase 2/3/4/5/6/7 previews
+    name: Export stable game and isolated Phase 2/3/4/5/6/7/8 previews
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -272,7 +272,37 @@ jobs:
           test -n "$(find build/web/preview/phase7 -maxdepth 1 -name '*.pck' -print -quit)"
           echo 'PHASE7 PREVIEW READY INSIDE WEB ARTIFACT'
 
-      - name: Upload stable and six browser previews
+      - name: Checkout CI-verified Phase 8 compact inventory separately (not merged)
+        uses: actions/checkout@v4
+        with:
+          ref: 0ee313a2ac5049edd0b1cb14ca4ccceec8c87c7f
+          path: phase8-src
+          persist-credentials: false
+
+      - name: Test and export Phase 8 compact inventory to isolated preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p phase8-src/fonts build/web/preview/phase8
+          cp fonts/NotoSansTC.ttf phase8-src/fonts/NotoSansTC.ttf
+          cp fonts/OFL.txt build/web/preview/phase8/NOTO_FONT_LICENSE.txt
+          godot --headless --path phase8-src --editor --quit 2>&1 | tee /tmp/phase8-import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase8-import.log; then exit 1; fi
+          for spec in 'test_phase3_inventory.gd|PHASE3 INVENTORY:' 'test_phase7_hotbar.gd|PHASE7 GEM HOTBAR:' 'test_phase6_hud.gd|PHASE6 ARPG HUD:' 'test_phase5_weapon_loot.gd|PHASE5 WEAPON LOOT:' 'test_phase4_combat_v2.gd|PHASE4 COMBAT V2:' 'test_phase2_skill_core.gd|PHASE2 TEST RESULT: 20 passed / 0 failed' 'test_phase2_cast_feedback.gd|PHASE2 CAST FEEDBACK: 11 passed / 0 failed' 'test_phase2_multitouch.gd|PHASE2 MULTITOUCH: 9 passed / 0 failed'; do
+            script="${spec%%|*}"
+            expected="${spec#*|}"
+            godot --headless --path phase8-src --script "res://tests/$script" 2>&1 | tee "/tmp/phase8-${script}.log"
+            grep -Fq "$expected" "/tmp/phase8-${script}.log"
+            if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' "/tmp/phase8-${script}.log" | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+          done
+          godot --headless --path phase8-src --export-release 'Web' "$GITHUB_WORKSPACE/build/web/preview/phase8/index.html" 2>&1 | tee /tmp/phase8-export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase8-export.log; then exit 1; fi
+          test -s build/web/preview/phase8/index.html
+          test -n "$(find build/web/preview/phase8 -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/web/preview/phase8 -maxdepth 1 -name '*.pck' -print -quit)"
+          echo 'PHASE8 PREVIEW READY INSIDE WEB ARTIFACT'
+
+      - name: Upload stable and seven browser previews
         uses: actions/upload-artifact@v4
         with:
           name: riftforge-web
