@@ -93,18 +93,15 @@ func _cast_weapon_slash(weapon: Dictionary) -> void:
 			enemy.take_hit(int(hit["damage"]), player.global_position)
 
 func _interact() -> void:
-	# Override only loot insertion; retain original portals and zone progression.
-	var nearest = null
-	var best := 2.3
-	for drop in get_tree().get_nodes_in_group("loot"):
-		if not is_instance_valid(drop) or drop.is_queued_for_deletion():
-			continue
-		var distance: float = drop.global_position.distance_to(player.global_position)
-		if distance < best:
-			best = distance
-			nearest = drop
-	if nearest == null:
-		super._interact()
+	# Share one semantic target lookup with hints/mobile controls; only loot insertion differs here.
+	if ui_open:
+		return
+	var target: Dictionary = get_interaction_target()
+	if str(target.get("kind", "")) != "loot":
+		_activate_interaction_target(target)
+		return
+	var nearest = target.get("node")
+	if not is_instance_valid(nearest) or nearest.is_queued_for_deletion():
 		return
 	if not Grid.try_add(inventory, nearest.item):
 		hud.announce("背包空間不足：先整理或裝備物品。戰利品仍留在地上。")
