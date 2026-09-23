@@ -1,0 +1,89 @@
+name: Phase 7 gem hotbar and gameplay regression
+on:
+  push:
+    branches: [feature/phase7-gem-hotbar]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare licensed font and Web templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fonts "$HOME/.local/share/godot/export_templates" build/phase7
+          cp -a /root/.local/share/godot/export_templates/. "$HOME/.local/share/godot/export_templates/"
+          wget --quiet --tries=3 --timeout=45 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf' -O fonts/NotoSansTC.ttf
+          wget --quiet --tries=3 --timeout=45 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/OFL.txt' -O fonts/OFL.txt
+          test "$(stat -c%s fonts/NotoSansTC.ttf)" -gt 1000000
+          test -s fonts/OFL.txt
+      - name: Godot import and reject parse errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --editor --quit 2>&1 | tee import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' import.log; then exit 1; fi
+      - name: Phase 7 assignable gem hotbar
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase7_hotbar.gd 2>&1 | tee phase7.log
+          grep -Eq '^PHASE7 GEM HOTBAR: [1-9][0-9]* passed / 0 failed$' phase7.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' phase7.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Phase 6 HUD regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase6_hud.gd 2>&1 | tee phase6.log
+          grep -Eq '^PHASE6 ARPG HUD: [1-9][0-9]* passed / 0 failed$' phase6.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' phase6.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Phase 5 weapon and real drop gameplay
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase5_weapon_loot.gd 2>&1 | tee phase5.log
+          grep -Eq '^PHASE5 WEAPON LOOT: [1-9][0-9]* passed / 0 failed$' phase5.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' phase5.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Phase 4 combat regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase4_combat_v2.gd 2>&1 | tee phase4.log
+          grep -Eq '^PHASE4 COMBAT V2: [1-9][0-9]* passed / 0 failed$' phase4.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' phase4.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Phase 3 inventory regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase3_inventory.gd 2>&1 | tee phase3.log
+          grep -Eq '^PHASE3 INVENTORY: [1-9][0-9]* passed / 0 failed$' phase3.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' phase3.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Phase 2 skill and feedback regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_skill_core.gd 2>&1 | tee skill.log
+          grep -Fq 'PHASE2 TEST RESULT: 20 passed / 0 failed' skill.log
+          godot --headless --path . --script res://tests/test_phase2_cast_feedback.gd 2>&1 | tee feedback.log
+          grep -Fq 'PHASE2 CAST FEEDBACK: 11 passed / 0 failed' feedback.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' skill.log feedback.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Mobile multitouch regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_multitouch.gd 2>&1 | tee touch.log
+          grep -Fq 'PHASE2 MULTITOUCH: 9 passed / 0 failed' touch.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' touch.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Export playable Phase 7 Web build without publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --export-release Web build/phase7/index.html 2>&1 | tee export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' export.log; then exit 1; fi
+          test -s build/phase7/index.html
+          test -n "$(find build/phase7 -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/phase7 -maxdepth 1 -name '*.pck' -print -quit)"
+          echo 'PHASE7 WEB EXPORT READY; NO PRODUCTION GAMEPLAY CHANGED'
