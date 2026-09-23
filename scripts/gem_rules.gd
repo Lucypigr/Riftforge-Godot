@@ -1,12 +1,36 @@
 extends RefCounted
 ## Small, data-driven, ORIGINAL active/support gem graph, not a GD/POE data dump.
-## Each support must be reachable from active socket 0 AND match the active tags.
+## Supports never occupy the hotbar; only installed active gems can be assigned there.
 const GEM_DATA = {
-	"ember_bolt": {"kind": "active", "tags": ["fire", "projectile", "spell"]},
-	"scatter": {"kind": "support", "requires": ["projectile"]},
-	"pierce": {"kind": "support", "requires": ["projectile"]}
+	"ember_bolt": {
+		"kind": "active",
+		"display_name": "燼焰彈",
+		"tags": ["fire", "projectile", "spell"],
+		"icon": "res://assets/ui/skills/ember_bolt.svg"
+	},
+	"shock_nova": {
+		"kind": "active",
+		"display_name": "震盪環",
+		"tags": ["lightning", "area", "spell"],
+		"icon": "res://assets/ui/skills/shock_nova.svg"
+	},
+	"scatter": {"kind": "support", "display_name": "分裂輔助", "requires": ["projectile"]},
+	"pierce": {"kind": "support", "display_name": "穿透輔助", "requires": ["projectile"]}
 }
 const LINKS = [[0, 1], [1, 2]]
+
+static func is_active(gem_id: String) -> bool:
+	return GEM_DATA.has(gem_id) and str(GEM_DATA[gem_id].get("kind", "")) == "active"
+
+static func display_name(gem_id: String) -> String:
+	if not GEM_DATA.has(gem_id):
+		return ""
+	return str(GEM_DATA[gem_id].get("display_name", gem_id))
+
+static func icon_path(gem_id: String) -> String:
+	if not GEM_DATA.has(gem_id):
+		return "res://assets/ui/skills/empty.svg"
+	return str(GEM_DATA[gem_id].get("icon", "res://assets/ui/skills/empty.svg"))
 
 static func modifiers(socket_gems: Array) -> Dictionary:
 	var result := {"projectile_count": 1, "damage_multiplier": 1.0, "pierce_count": 0}
