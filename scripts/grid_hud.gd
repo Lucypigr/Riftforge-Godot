@@ -1,8 +1,8 @@
 extends "res://scripts/hud.gd"
-## Grid-first ARPG layout: 120 storage cells and a separate equipped-gear tab.
+## Phase 8 compact ARPG layout: 180-cell dense grid and separate equipped-gear tab.
 const Grid = preload("res://scripts/grid_inventory.gd")
 const GridView = preload("res://scripts/inventory_grid_view.gd")
-const INVENTORY_PANEL_SIZE := Vector2(790, 550)
+const INVENTORY_PANEL_SIZE := Vector2(860, 650)
 var _grid_view: Control
 var _grid_status: Label
 var _overflow_choices: OptionButton
@@ -24,7 +24,7 @@ var _selected_index := -1
 var _inspected_slot := "weapon"
 
 func _build_inventory() -> void:
-	_inventory_panel = _panel(-395, -275, 395, 275, true)
+	_inventory_panel = _panel(-430, -325, 430, 325, true)
 	_inventory_panel.visible = false
 	var frame := StyleBoxFlat.new()
 	frame.bg_color = Color("#11141b")
@@ -83,16 +83,18 @@ func _build_inventory() -> void:
 	_bag_page.add_child(navigation)
 	_prev_button = Button.new()
 	_prev_button.text = "◀"
-	_prev_button.custom_minimum_size = Vector2(65, 39)
+	_prev_button.custom_minimum_size = Vector2(1, 1)
+	_prev_button.visible = false
 	_prev_button.pressed.connect(_previous_page)
 	navigation.add_child(_prev_button)
-	_page_label = _label("", 17)
-	_page_label.custom_minimum_size = Vector2(170, 34)
+	_page_label = _label("緊湊背包", 17)
+	_page_label.custom_minimum_size = Vector2(150, 34)
 	_page_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	navigation.add_child(_page_label)
 	_next_button = Button.new()
 	_next_button.text = "▶"
-	_next_button.custom_minimum_size = Vector2(65, 39)
+	_next_button.custom_minimum_size = Vector2(1, 1)
+	_next_button.visible = false
 	_next_button.pressed.connect(_next_page)
 	navigation.add_child(_next_button)
 	var nav_filler := Control.new()
@@ -104,7 +106,7 @@ func _build_inventory() -> void:
 	navigation.add_child(_grid_status)
 
 	_grid_view = GridView.new()
-	_grid_view.custom_minimum_size = Vector2(720, 300)
+	_grid_view.custom_minimum_size = Vector2(756, 420)
 	_grid_view.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_bag_page.add_child(_grid_view)
 	_grid_view.cell_pressed.connect(_on_grid_cell)
@@ -179,9 +181,9 @@ func _refresh_inventory() -> void:
 	if _selected_index >= game.inventory.size():
 		_selected_index = -1
 	_grid_view.show_items(game.inventory, _selected_index, _grid_page)
-	_page_label.text = "第 %d / %d 頁" % [_grid_page + 1, Grid.PAGE_COUNT]
-	_prev_button.disabled = _grid_page <= 0
-	_next_button.disabled = _grid_page >= Grid.PAGE_COUNT - 1
+	_page_label.text = "18 × 10 緊湊背包"
+	_prev_button.disabled = true
+	_next_button.disabled = true
 	var extra := Grid.overflow_count(game.inventory)
 	var cells := Grid.occupied_cells(game.inventory)
 	_grid_status.text = "%d / %d 格｜%d 件" % [cells, Grid.COLS * Grid.ROWS, game.inventory.size()]
@@ -195,9 +197,9 @@ func _refresh_inventory() -> void:
 	_overflow_choices.visible = extra > 0
 	var weapon: Dictionary = game.equipment["weapon"]
 	var armor: Dictionary = game.equipment["armor"]
-	_equipment.text = "生命上限 %d｜目前已實作武器、護甲" % int(game.player.max_hp)
-	_weapon_button.text = "武器｜%s" % str(weapon.get("name", "未知"))
-	_armor_button.text = "護甲｜%s" % str(armor.get("name", "未知"))
+	_equipment.text = "生命上限 %d｜新角色不預裝任何裝備" % int(game.player.max_hp)
+	_weapon_button.text = "武器｜%s" % str(weapon.get("name", "空"))
+	_armor_button.text = "護甲｜%s" % str(armor.get("name", "空"))
 	_inspect_equipped(_inspected_slot)
 	_update_selection()
 
@@ -212,6 +214,9 @@ func _inspect_equipped(slot: String) -> void:
 	if game == null:
 		return
 	var item: Dictionary = game.equipment[slot]
+	if str(item.get("name", "")).is_empty():
+		_equipment_details.text = "%s｜空欄位\n從背包選擇掉落裝備後按「裝備所選」。" % ("武器" if slot == "weapon" else "護甲")
+		return
 	_equipment_details.text = "%s｜%s [%s]\n傷害 +%s　生命 +%s　護甲 %s%%" % ["武器" if slot == "weapon" else "護甲", str(item.get("name", "未知")), str(item.get("rarity", "普通")), str(item.get("damage", 0)), str(item.get("hp", 0)), str(int(float(item.get("armor", 0.0)) * 100.0))]
 
 func _update_selection() -> void:
@@ -260,4 +265,4 @@ func _repack() -> void:
 	_selected_index = -1
 	game.save_progress()
 	_refresh_inventory()
-	announce("兩頁已整理" if extra == 0 else "已整理；仍有 %d 件舊物品無法放入。" % extra)
+	announce("背包已整理" if extra == 0 else "已整理；仍有 %d 件舊物品無法放入。" % extra)
