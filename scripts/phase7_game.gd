@@ -141,7 +141,7 @@ func cast_skill_slot(slot: int) -> bool:
 		"ember_bolt":
 			return _cast_ember_bolt_skill()
 		"shock_nova":
-			var before := _skill_runtime.remaining(_nova_skill.skill_id)
+			var before: float = float(_skill_runtime.remaining(_nova_skill.skill_id))
 			cast_nova()
 			return _skill_runtime.remaining(_nova_skill.skill_id) > before
 		_:
