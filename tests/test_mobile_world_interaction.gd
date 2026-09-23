@@ -59,7 +59,7 @@ func _run() -> void:
 	game.add_child(drop)
 	check(game.can_world_interact() and game.get_interaction_target().get("kind", "") == "loot", "nearby ground loot is detected as a gameplay target")
 	check(game.interaction_action_label() == "拾取" and game.interaction_hint().begins_with("[F] 拾取"), "mobile shows pickup without parsing the F hint")
-	var before_pickup := game.inventory.size()
+	var before_pickup: int = game.inventory.size()
 	_tap_action(controls, 12, "interact")
 	check(game.inventory.size() == before_pickup + 1 and drop.is_queued_for_deletion(), "mobile interaction picks real ground loot")
 	check(Grid.placed(game.inventory.back()) and Grid.COLS == 18 and Grid.ROWS == 10, "mobile pickup enters the Phase 8 18 by 10 grid")
@@ -78,7 +78,7 @@ func _run() -> void:
 
 	# Free one cell so an accidental UI interaction would be observable.
 	game.inventory.pop_back()
-	var count_with_space := game.inventory.size()
+	var count_with_space: int = game.inventory.size()
 	var joy_center: Vector2 = controls._center("joy")
 	_touch(controls, 20, joy_center, true)
 	var drag := InputEventScreenDrag.new()
@@ -124,7 +124,7 @@ func _run() -> void:
 	game._sync_cooldowns()
 	game.player.mana = game.player.max_mana
 	game.player.position = game._portal_position + Vector3(0, 0.9, 0)
-	var zone_before_e := game.zone
+	var zone_before_e: String = game.zone
 	Input.action_press("skill_slot_3")
 	await process_frame
 	Input.action_release("skill_slot_3")
@@ -135,7 +135,7 @@ func _run() -> void:
 	pc_drop.initialize(sample("gem", "PC F 拾取"))
 	pc_drop.position = game.player.position + Vector3(0.2, -0.5, 0)
 	game.add_child(pc_drop)
-	var pc_before := game.inventory.size()
+	var pc_before: int = game.inventory.size()
 	Input.action_press("interact")
 	await process_frame
 	Input.action_release("interact")
