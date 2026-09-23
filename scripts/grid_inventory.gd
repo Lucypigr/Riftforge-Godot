@@ -1,9 +1,9 @@
 extends RefCounted
-## Gameplay inventory: 120 real cells in two touch-friendly pages, not a visual-only resize.
-const COLS := 12
+## Phase 8 compact ARPG inventory: 180 real cells in one dense, POE-inspired grid.
+const COLS := 18
 const ROWS := 10
-const PAGE_ROWS := 5
-const PAGE_COUNT := 2
+const PAGE_ROWS := 10
+const PAGE_COUNT := 1
 
 static func footprint(item: Dictionary) -> Vector2i:
 	if item.has("grid_w") and item.has("grid_h"):
