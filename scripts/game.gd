@@ -368,17 +368,9 @@ func enemy_died(at: Vector3, boss: bool) -> void:
 			add_child(drop)
 	save_progress()
 
-func interaction_hint() -> String:
+func get_interaction_target() -> Dictionary:
 	if player == null:
-		return ""
-	for drop in get_tree().get_nodes_in_group("loot"):
-		if is_instance_valid(drop) and not drop.is_queued_for_deletion() and drop.global_position.distance_to(player.global_position) < 2.3:
-			return "[E] 拾取：" + str(drop.item["name"])
-	if player.global_position.distance_to(_portal_position) < 3.0:
-		return "[E] " + ("開始遠征" if zone == "camp" else "返回營地")
-	return "靠近傳送門或戰利品，按 E 互動。"
-
-func _interact() -> void:
+		return {}
 	var nearest = null
 	var best: float = 2.3
 	for drop in get_tree().get_nodes_in_group("loot"):
@@ -389,14 +381,51 @@ func _interact() -> void:
 			best = distance
 			nearest = drop
 	if nearest != null:
-		inventory.append(nearest.item.duplicate(true))
-		hud.announce("取得：" + str(nearest.item["name"]))
-		nearest.queue_free()
-		save_progress()
-		return
+		return {"kind": "loot", "node": nearest}
 	if player.global_position.distance_to(_portal_position) < 3.0:
-		_enter_zone("field" if zone == "camp" else "camp")
-		hud.announce("進入荒野：擊敗 %d 隻敵人並挑戰首領！" % target_kills if zone == "field" else "返回營地：檢視戰利品並調整寶石。")
+		return {"kind": "portal"}
+	return {}
+
+func can_world_interact() -> bool:
+	return not ui_open and not get_interaction_target().is_empty()
+
+func interaction_action_label() -> String:
+	if ui_open:
+		return ""
+	match str(get_interaction_target().get("kind", "")):
+		"loot": return "拾取"
+		"portal": return "傳送"
+	return ""
+
+func interaction_hint() -> String:
+	var target: Dictionary = get_interaction_target()
+	match str(target.get("kind", "")):
+		"loot":
+			var drop = target.get("node")
+			if is_instance_valid(drop):
+				return "[E] 拾取：" + str(drop.item["name"])
+		"portal":
+			return "[E] " + ("開始遠征" if zone == "camp" else "返回營地")
+	return "靠近傳送門或戰利品，按 E 互動。"
+
+func _interact() -> void:
+	if ui_open:
+		return
+	_activate_interaction_target(get_interaction_target())
+
+func _activate_interaction_target(target: Dictionary) -> void:
+	match str(target.get("kind", "")):
+		"loot":
+			var drop = target.get("node")
+			if not is_instance_valid(drop) or drop.is_queued_for_deletion():
+				return
+			inventory.append(drop.item.duplicate(true))
+			hud.announce("取得：" + str(drop.item["name"]))
+			drop.queue_free()
+			save_progress()
+		"portal":
+			_enter_zone("field" if zone == "camp" else "camp")
+			hud.announce("進入荒野：擊敗 %d 隻敵人並挑戰首領！" % target_kills if zone == "field" else "返回營地：檢視戰利品並調整寶石。")
 
 func equip_item(index: int) -> void:
 	if index < 0 or index >= inventory.size():

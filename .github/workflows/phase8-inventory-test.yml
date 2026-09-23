@@ -1,7 +1,12 @@
 name: Phase 8 compact inventory regression
 on:
   push:
-    branches: [feature/phase8-compact-inventory]
+    branches:
+      - "feature/phase*"
+      - "fix/phase8-*"
+  pull_request:
+    branches:
+      - "feature/phase*"
   workflow_dispatch:
 jobs:
   test:
@@ -25,6 +30,12 @@ jobs:
           set -euo pipefail
           godot --headless --path . --editor --quit 2>&1 | tee import.log
           if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' import.log; then exit 1; fi
+      - name: Headless project startup smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --quit-after 5 2>&1 | tee startup.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' startup.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
       - name: Compact inventory and empty-start regression
         shell: bash
         run: |
@@ -71,6 +82,13 @@ jobs:
           godot --headless --path . --script res://tests/test_phase2_multitouch.gd 2>&1 | tee touch.log
           grep -Fq 'PHASE2 MULTITOUCH: 9 passed / 0 failed' touch.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' skill.log feedback.log touch.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Mobile world interaction regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_mobile_world_interaction.gd 2>&1 | tee mobile-world.log
+          grep -Eq '^MOBILE WORLD INTERACTION: [1-9][0-9]* passed / 0 failed$' mobile-world.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' mobile-world.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
       - name: Export playable Phase 8 Web build
         shell: bash
         run: |

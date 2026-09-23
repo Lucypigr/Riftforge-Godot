@@ -165,7 +165,7 @@ func _set_joystick(pos: Vector2) -> void:
 	surface.queue_redraw()
 
 func _has_interaction() -> bool:
-	return game.interaction_hint().begins_with("[E]")
+	return game.can_world_interact()
 
 func _auto_aim() -> void:
 	var distance := 14.0
@@ -230,9 +230,10 @@ func _draw_hud() -> void:
 	_text("閃避", _center("dash"), 17)
 	if game.player.dash_cooldown > 0.0:
 		_text("%.1f" % game.player.dash_cooldown, _center("dash") + Vector2(0, 27), 14, Color("#fbd7a5"))
-	if _has_interaction():
+	var interaction_label: String = game.interaction_action_label()
+	if not interaction_label.is_empty():
 		_circle(_center("interact"), 38.0, Color("#eac27c"))
-		_text("拾取" if "拾取" in game.interaction_hint() else "傳送", _center("interact"), 16)
+		_text(interaction_label, _center("interact"), 16)
 	for key in ["inventory", "gems"]:
 		var c := _center(key)
 		surface.draw_rect(Rect2(c - Vector2(43, 22), Vector2(86, 44)), Color(0.04, 0.10, 0.15, 0.90), true)
