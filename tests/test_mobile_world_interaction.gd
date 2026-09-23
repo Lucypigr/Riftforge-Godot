@@ -113,9 +113,8 @@ func _run() -> void:
 	game._enter_zone("camp")
 	game.player.position = game._portal_position + Vector3(0, 0.9, 0)
 	Input.action_press("interact")
-	await process_frame
+	game._process(0.016)
 	Input.action_release("interact")
-	await process_frame
 	check(game.zone == "field", "PC F action near portal performs the real zone transition")
 
 	# E stays a skill input in Phase 7/8 and must never activate nearby world targets.
@@ -126,9 +125,8 @@ func _run() -> void:
 	game.player.position = game._portal_position + Vector3(0, 0.9, 0)
 	var zone_before_e: String = game.zone
 	Input.action_press("skill_slot_3")
-	await process_frame
+	game._process(0.016)
 	Input.action_release("skill_slot_3")
-	await process_frame
 	check(game.zone == zone_before_e and game.skill_cooldown("shock_nova") > 0.0, "E executes only its assigned skill and does not activate the portal")
 
 	# Isolate the desktop pickup assertion from the preceding full-bag scenario.
@@ -139,9 +137,8 @@ func _run() -> void:
 	game.add_child(pc_drop)
 	var pc_before: int = game.inventory.size()
 	Input.action_press("interact")
-	await process_frame
+	game._process(0.016)
 	Input.action_release("interact")
-	await process_frame
 	check(game.inventory.size() == pc_before + 1 and pc_drop.is_queued_for_deletion(), "PC F action picks up nearby loot through the shared target path")
 
 	var e_drop = Loot.new()
@@ -151,9 +148,8 @@ func _run() -> void:
 	game._skill_runtime.advance(10.0)
 	game._sync_cooldowns()
 	Input.action_press("skill_slot_3")
-	await process_frame
+	game._process(0.016)
 	Input.action_release("skill_slot_3")
-	await process_frame
 	check(not e_drop.is_queued_for_deletion(), "E near loot does not trigger world pickup")
 
 	print("MOBILE WORLD INTERACTION: %d passed / %d failed" % [passed, failed])
