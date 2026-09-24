@@ -207,6 +207,8 @@ func _run() -> void:
 
 	print("PHASE10 GEM UI: %d passed / %d failed" % [passed, failed])
 	loaded.queue_free()
+	await process_frame
+	await process_frame
 	quit(0 if failed == 0 else 1)
 
 func _friendly_count(game) -> int:
