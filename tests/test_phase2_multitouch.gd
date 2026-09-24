@@ -18,6 +18,10 @@ func _run() -> void:
 	game.player.mana = 80.0
 	game._skill_runtime.advance(10.0)
 	game._sync_cooldowns()
+	# This regression owns its hotbar fixture. Earlier Phase 7 tests intentionally
+	# move the active gems and persist that state in the shared user:// save.
+	# Keep this test focused on independent touch ownership and release-to-cast.
+	game.skill_slots = ["ember_bolt", "shock_nova", "", "", "", ""]
 	var joy_center: Vector2 = controls._center("joy")
 	var attack_center: Vector2 = controls._center("attack")
 	var initial: int = _friendly_count(game)
