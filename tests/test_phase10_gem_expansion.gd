@@ -43,6 +43,9 @@ func _clear_combat_nodes(game) -> void:
 func _enemy(game, offset: Vector3):
 	var e = Enemy.new()
 	e.initialize(game, "hunter", false)
+	# Integration cases below verify gameplay effects, not hit-chance RNG.
+	# Keep Combat V2 in the path while forcing its PTH clamp to 100% hit chance.
+	e.defensive_ability = 1.0
 	game.add_child(e)
 	e.position = game.player.position + offset
 	return e
