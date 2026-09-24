@@ -24,7 +24,7 @@ func _load_progress() -> void:
 
 func _ready() -> void:
 	super._ready()
-	_normalize_equipment_socket_state(true)
+	_normalize_equipment_socket_state(false)
 	_sync_installed_from_equipment()
 	var previous_hud = hud
 	remove_child(previous_hud)
@@ -57,9 +57,9 @@ func save_progress() -> void:
 
 func equip_item(index: int) -> void:
 	super.equip_item(index)
-	# If a real weapon/armor is now equipped, attach the socket schema and migrate
-	# the old prototype gem group atomically into that gear on first use.
-	_normalize_equipment_socket_state(true)
+	# Equipping gear only adds visible socket metadata. The new equipment-owned
+	# gem mode begins only when the player actually inserts/moves a socketed gem.
+	_normalize_equipment_socket_state(false)
 	_sync_installed_from_equipment()
 	save_progress()
 	if is_instance_valid(hud) and hud.has_method("_refresh_inventory"):
@@ -78,10 +78,9 @@ func _normalize_equipment_socket_state(allow_migration: bool) -> void:
 		has_real_equipment = true
 		had_socket_payload = had_socket_payload or item.has("installed_gems") or item.has("socket_colors")
 		equipment[slot] = _ensure_socket_schema(item, slot)
-	if has_real_equipment and (gem_equipment_mode or had_socket_payload):
-		gem_equipment_mode = true
-	if allow_migration and has_real_equipment and not gem_equipment_mode:
-		gem_equipment_mode = true
+	# Socket metadata alone must not opt legacy saves/tests into the new gameplay
+	# ownership model. Only an explicit gem socket operation sets gem_equipment_mode.
+	if allow_migration and gem_equipment_mode and has_real_equipment and not had_socket_payload:
 		_migrate_legacy_gems_to_equipment()
 
 func _ensure_socket_schema(item: Dictionary, slot: String) -> Dictionary:
