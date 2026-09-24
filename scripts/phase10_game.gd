@@ -299,6 +299,26 @@ func _load_phase10_state() -> void:
 	if data.get("skill_slots") is Array and data["skill_slots"].size() == 6:
 		skill_slots = data["skill_slots"].duplicate()
 
+
+func _normalize_loaded_gem_instances(raw_instances: Array) -> Array:
+	var normalized: Array = []
+	for raw in raw_instances:
+		if not (raw is Dictionary):
+			continue
+		var instance: Dictionary = raw.duplicate(true)
+		instance["socket_index"] = int(instance.get("socket_index", -1))
+		instance["level"] = int(instance.get("level", 1))
+		normalized.append(instance)
+	return normalized
+
+func _normalize_loaded_socket_links(raw_links: Array) -> Array:
+	var normalized: Array = []
+	for raw_edge in raw_links:
+		if not (raw_edge is Array) or raw_edge.size() != 2:
+			continue
+		normalized.append([int(raw_edge[0]), int(raw_edge[1])])
+	return normalized
+
 func save_progress() -> void:
 	super.save_progress()
 	if not _phase10_ready:
