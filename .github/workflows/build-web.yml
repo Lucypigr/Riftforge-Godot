@@ -334,7 +334,7 @@ jobs:
       - name: Checkout CI-verified Phase 10 UI equipment/socket preview separately (not merged)
         uses: actions/checkout@v4
         with:
-          ref: 4df25ec51eb22a613c4d0a7233ad0756962f2cc9
+          ref: e5be36f038becb7beffbb43df0f8466eb6bfcc25
           path: phase10-ui-src
           persist-credentials: false
 
@@ -351,7 +351,7 @@ jobs:
           grep -Fq 'MOBILE WORLD INTERACTION: 28 passed / 0 failed' /tmp/phase10-ui-mobile-world.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' /tmp/phase10-ui-mobile-world.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
           godot --headless --path phase10-ui-src --script res://tests/test_phase10_gem_ui.gd 2>&1 | tee /tmp/phase10-ui-regression.log
-          grep -Fq 'PHASE10 GEM UI: 41 passed / 0 failed' /tmp/phase10-ui-regression.log
+          grep -Fq 'PHASE10 GEM UI: 48 passed / 0 failed' /tmp/phase10-ui-regression.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' /tmp/phase10-ui-regression.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
           godot --headless --path phase10-ui-src --export-release 'Web' "$GITHUB_WORKSPACE/build/web/preview/phase10-ui/index.html" 2>&1 | tee /tmp/phase10-ui-export.log
           if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase10-ui-export.log; then exit 1; fi
