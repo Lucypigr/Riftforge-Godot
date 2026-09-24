@@ -56,7 +56,7 @@ func skill_mana_cost(gem_id: String) -> float:
 	return float(resolved_skill(gem_id).get("mana_cost", 0.0))
 
 func skill_slot_disabled(slot: int) -> bool:
-	var gem_id := skill_gem(slot)
+	var gem_id: String = skill_gem(slot)
 	if gem_id.is_empty() or not (gem_id in installed_skill_gems()):
 		return true
 	return ui_open or skill_cooldown(gem_id) > 0.0 or player.mana < skill_mana_cost(gem_id)
@@ -72,7 +72,7 @@ func cast_mobile_slot(slot: int, aim: Vector3) -> bool:
 	return cast_active_gem(skill_gem(slot), aim)
 
 func skill_requires_aim(slot: int) -> bool:
-	var resolved := resolved_skill(skill_gem(slot))
+	var resolved: Dictionary = resolved_skill(skill_gem(slot))
 	return not resolved.is_empty() and str(resolved.get("behavior", "")) != "nova"
 
 func skill_preview_kind(slot: int) -> String:
@@ -81,11 +81,11 @@ func skill_preview_kind(slot: int) -> String:
 func cast_active_gem(gem_id: String, aim: Vector3) -> bool:
 	if ui_open or gem_id.is_empty() or not (gem_id in installed_skill_gems()) or _skill_runtime == null:
 		return false
-	var resolved := resolved_skill(gem_id)
+	var resolved: Dictionary = resolved_skill(gem_id)
 	if resolved.is_empty():
 		return false
-	var behavior := str(resolved.get("behavior", ""))
-	var horizontal := Vector3(aim.x, 0.0, aim.z)
+	var behavior: String = str(resolved.get("behavior", ""))
+	var horizontal: Vector3 = Vector3(aim.x, 0.0, aim.z)
 	if behavior != "nova" and horizontal.length_squared() < 0.0001:
 		_skill_blocked("invalid_aim", skill_name(gem_id), int(resolved.get("mana_cost", 0)))
 		return false
@@ -116,12 +116,12 @@ func _phase10_skill_definition(resolved: Dictionary):
 
 func phase10_hit_modifiers(resolved: Dictionary, chain_index: int = 0) -> Dictionary:
 	var components: Dictionary = resolved.get("damage_components", {})
-	var primary := str(resolved.get("damage_type", "physical"))
+	var primary: String = str(resolved.get("damage_type", "physical"))
 	var added: Dictionary = {}
 	for damage_type in components:
 		if str(damage_type) != primary:
 			added[str(damage_type)] = float(components[damage_type])
-	var chain_factor := pow(float(resolved.get("chain_damage_multiplier", 1.0)), chain_index)
+	var chain_factor: float = pow(float(resolved.get("chain_damage_multiplier", 1.0)), chain_index)
 	return {
 		"offensive_ability": _offensive_ability(),
 		"added_damage_by_type": added,
@@ -136,10 +136,10 @@ func _phase10_cast_projectile(resolved: Dictionary, heading: Vector3) -> bool:
 		_skill_blocked(str(result.get("reason", "")), skill.display_name, int(skill.mana_cost))
 		return false
 	player.mana = _skill_runtime.mana
-	var count := maxi(1, int(resolved.get("projectile_count", 1)))
+	var count: int = maxi(1, int(resolved.get("projectile_count", 1)))
 	for shot in range(count):
-		var angle := deg_to_rad((float(shot) - (float(count) - 1.0) * 0.5) * 12.0)
-		var direction := heading.rotated(Vector3.UP, angle)
+		var angle: float = deg_to_rad((float(shot) - (float(count) - 1.0) * 0.5) * 12.0)
+		var direction: Vector3 = heading.rotated(Vector3.UP, angle)
 		var projectile = ResolvedProjectile.new()
 		projectile.initialize(self, _skill_runtime, skill, resolved, direction)
 		projectile.position = player.global_position + direction * 0.83 + Vector3(0, 0.1, 0)
@@ -158,7 +158,7 @@ func _phase10_targets(radius: float, direction: Vector3 = Vector3.ZERO, cone: bo
 			continue
 		if not cone and enemy.global_position.distance_to(player.global_position) > radius:
 			continue
-		var enemy_id := enemy.get_instance_id()
+		var enemy_id: int = enemy.get_instance_id()
 		nodes[enemy_id] = enemy
 		targets.append({
 			"id":enemy_id,"hp":enemy.hp,"position":enemy.global_position,
@@ -172,9 +172,9 @@ func _phase10_targets(radius: float, direction: Vector3 = Vector3.ZERO, cone: bo
 
 func _phase10_cast_nova(resolved: Dictionary) -> bool:
 	var skill = _phase10_skill_definition(resolved)
-	var selection := _phase10_targets(float(resolved.get("aoe_radius", 0.0)))
+	var selection: Dictionary = _phase10_targets(float(resolved.get("aoe_radius", 0.0)))
 	_skill_runtime.mana = player.mana
-	var modifiers := phase10_hit_modifiers(resolved)
+	var modifiers: Dictionary = phase10_hit_modifiers(resolved)
 	modifiers["can_miss"] = false
 	var result: Dictionary = _skill_runtime.cast(skill, player.global_position, Vector3.ZERO, selection["targets"], modifiers)
 	if not bool(result.get("ok", false)):
@@ -191,11 +191,11 @@ func _phase10_cast_nova(resolved: Dictionary) -> bool:
 	return true
 
 func _phase10_cast_melee(resolved: Dictionary, heading: Vector3) -> bool:
-	var radius := float(resolved.get("aoe_radius", 3.0))
+	var radius: float = float(resolved.get("aoe_radius", 3.0))
 	var skill = _phase10_skill_definition(resolved)
-	var selection := _phase10_targets(radius, heading, true)
+	var selection: Dictionary = _phase10_targets(radius, heading, true)
 	_skill_runtime.mana = player.mana
-	var modifiers := phase10_hit_modifiers(resolved)
+	var modifiers: Dictionary = phase10_hit_modifiers(resolved)
 	modifiers["can_miss"] = false
 	modifiers["flat_damage"] = float(equipment["weapon"].get("damage", 0.0)) * float(resolved.get("weapon_damage_multiplier", 1.0))
 	var result: Dictionary = _skill_runtime.cast(skill, player.global_position, heading, selection["targets"], modifiers)
@@ -238,15 +238,15 @@ func phase10_ground_tick(origin: Vector3, resolved: Dictionary) -> void:
 	var skill = _phase10_skill_definition(resolved)
 	skill.mana_cost = 0.0
 	skill.cooldown = 0.0
-	var radius := float(resolved.get("aoe_radius", 0.0))
-	var modifiers := phase10_hit_modifiers(resolved)
+	var radius: float = float(resolved.get("aoe_radius", 0.0))
+	var modifiers: Dictionary = phase10_hit_modifiers(resolved)
 	modifiers["can_miss"] = false
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(enemy) or enemy.is_queued_for_deletion() or enemy.hp <= 0.0:
 			continue
 		if enemy.global_position.distance_to(origin) > radius:
 			continue
-		var target := {
+		var target: Dictionary = {
 			"hp":enemy.hp,"position":enemy.global_position,
 			"resistance":0.08 if enemy.boss else 0.0,
 			"defensive_ability":enemy.defensive_ability,
