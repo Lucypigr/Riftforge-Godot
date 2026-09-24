@@ -293,9 +293,9 @@ func _load_phase10_state() -> void:
 	if not data is Dictionary:
 		return
 	if data.get("gem_instances") is Array:
-		gem_instances = data["gem_instances"].duplicate(true)
+		gem_instances = _normalize_loaded_gem_instances(data["gem_instances"])
 	if data.get("socket_links") is Array:
-		socket_links = data["socket_links"].duplicate(true)
+		socket_links = _normalize_loaded_socket_links(data["socket_links"])
 	if data.get("skill_slots") is Array and data["skill_slots"].size() == 6:
 		skill_slots = data["skill_slots"].duplicate()
 
