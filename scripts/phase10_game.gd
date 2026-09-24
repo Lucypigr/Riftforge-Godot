@@ -11,11 +11,15 @@ const Phase10HUD = preload("res://scripts/phase10_hud.gd")
 var gem_instances: Array = GemSystem.default_instances()
 var socket_links: Array = GemSystem.default_links()
 var _phase10_ready := false
+var _had_phase10_save := false
 
 func _ready() -> void:
+	# Load Phase 10 socket data before parent startup can rewrite the shared save file.
+	_had_phase10_save = _phase10_state_exists()
+	if _had_phase10_save:
+		_load_phase10_state()
 	super._ready()
-	_load_phase10_state()
-	if not _phase10_state_exists():
+	if not _had_phase10_save:
 		skill_slots = ["ember_bolt","shock_nova","frost_shard","arc_spark","rift_cleave","cinder_field"]
 	_sanitize_skill_slots()
 	_phase10_ready = true
@@ -96,7 +100,7 @@ func cast_active_gem(gem_id: String, aim: Vector3) -> bool:
 			return _phase10_cast_ground_area(resolved, horizontal.normalized())
 	return false
 
-func _phase10_skill_definition(resolved: Dictionary) -> Resource:
+func _phase10_skill_definition(resolved: Dictionary):
 	var skill = SkillDefinition10.new()
 	skill.skill_id = StringName(str(resolved.get("id", "")))
 	skill.display_name = str(resolved.get("display_name", ""))
