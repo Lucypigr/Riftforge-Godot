@@ -199,7 +199,7 @@ func _run() -> void:
 	check(absf(game.hud._inventory_panel.offset_right - game.hud._inventory_panel.offset_left - 820.0) < 0.5, "mobile inventory panel fits landscape viewport width")
 	check(game.hud._detail_panel.get_parent() == game.hud._bag_page, "mobile detail panel reflows below equipment and backpack")
 	check(game.hud._inventory_scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_AUTO, "mobile integrated surface can scroll vertically")
-	var wide_hit := game.hud._equipment_socket_view._socket_hit(game.hud._equipment_socket_view.socket_center("weapon", 0) + Vector2(27, 0))
+	var wide_hit: Dictionary = game.hud._equipment_socket_view._socket_hit(game.hud._equipment_socket_view.socket_center("weapon", 0) + Vector2(27, 0))
 	check(not wide_hit.is_empty(), "socket touch target remains at least 56 logical pixels wide")
 	game.hud.set_mobile_layout(false)
 	check(game.hud._detail_panel.get_parent() == game.hud._inventory_body, "desktop layout restores side detail panel")
