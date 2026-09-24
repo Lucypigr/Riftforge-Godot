@@ -1,0 +1,28 @@
+name: Phase 2 multitouch regression
+on:
+  push:
+    branches: [feature/phase2-skill-core]
+  workflow_dispatch:
+jobs:
+  touch:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import project
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --editor --quit 2>&1 | tee touch-import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' touch-import.log; then exit 1; fi
+      - name: Simulate independent joystick and attack touches in real scene
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_multitouch.gd 2>&1 | tee touch-test.log
+          grep -q 'PHASE2 MULTITOUCH: 9 passed / 0 failed' touch-test.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' touch-test.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then
+            echo 'Mobile touch regression failed' >&2
+            exit 1
+          fi

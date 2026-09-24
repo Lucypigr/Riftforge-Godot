@@ -1,0 +1,57 @@
+name: Phase 3 inventory and touch regression
+on:
+  push:
+    branches: [feature/phase3-grid-inventory]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Chinese font and Godot export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fonts "$HOME/.local/share/godot/export_templates" build/phase3
+          cp -a /root/.local/share/godot/export_templates/. "$HOME/.local/share/godot/export_templates/"
+          wget --quiet --tries=3 --timeout=45 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf' -O fonts/NotoSansTC.ttf
+          test "$(stat -c%s fonts/NotoSansTC.ttf)" -gt 1000000
+      - name: Import game without script errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --editor --quit 2>&1 | tee import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' import.log; then exit 1; fi
+      - name: Test real grid, pickup, equipment and persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase3_inventory.gd 2>&1 | tee inventory.log
+          grep -Eq '^PHASE3 INVENTORY: [1-9][0-9]* passed / 0 failed$' inventory.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' inventory.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Check skill logic still works
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_skill_core.gd 2>&1 | tee skill.log
+          grep -q 'PHASE2 TEST RESULT: 20 passed / 0 failed' skill.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|FAIL ' skill.log; then exit 1; fi
+      - name: Check two-finger game controls still work
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase2_multitouch.gd 2>&1 | tee touch.log
+          grep -q 'PHASE2 MULTITOUCH: 9 passed / 0 failed' touch.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' touch.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Export playable browser build, do not publish to production
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --export-release Web build/phase3/index.html 2>&1 | tee export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' export.log; then exit 1; fi
+          test -s build/phase3/index.html
+          test -n "$(find build/phase3 -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/phase3 -maxdepth 1 -name '*.pck' -print -quit)"
+          echo 'PHASE3 WEB EXPORT: passed; production untouched'
