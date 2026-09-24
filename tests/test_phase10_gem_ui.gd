@@ -103,7 +103,7 @@ func _run() -> void:
 	var overlap_target_index := find_gem(game.inventory, "scatter")
 	var ember_x_before := int(game.inventory[ember_index]["grid_x"])
 	var ember_y_before := int(game.inventory[ember_index]["grid_y"])
-	var bag_count_before_overlap := game.inventory.size()
+	var bag_count_before_overlap: int = game.inventory.size()
 	check(not game.move_inventory_gem(ember_index, int(game.inventory[overlap_target_index]["grid_x"]), int(game.inventory[overlap_target_index]["grid_y"])), "backpack gem cannot be dropped onto occupied backpack gem")
 	check(game.inventory.size() == bag_count_before_overlap and int(game.inventory[ember_index]["grid_x"]) == ember_x_before and int(game.inventory[ember_index]["grid_y"]) == ember_y_before, "failed backpack gem move never duplicates or loses the gem")
 
