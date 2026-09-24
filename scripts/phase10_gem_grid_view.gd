@@ -18,13 +18,14 @@ func _get_drag_data(at_position: Vector2):
 	if str(item.get("slot", "")) != "gem" or not GemRules.is_gem(gem_id):
 		return null
 	var data := {"kind": "inventory_gem", "inventory_index": index, "gem_id": gem_id}
-	var preview := Label.new()
-	preview.text = GemRules.display_name(gem_id)
-	preview.add_theme_font_size_override("font_size", 15)
-	var path := "res://fonts/NotoSansTC.ttf"
-	if ResourceLoader.exists(path):
-		preview.add_theme_font_override("font", load(path) as Font)
-	set_drag_preview(preview)
+	if get_viewport().gui_is_dragging():
+		var preview := Label.new()
+		preview.text = GemRules.display_name(gem_id)
+		preview.add_theme_font_size_override("font_size", 15)
+		var font_path := "res://fonts/NotoSansTC.ttf"
+		if ResourceLoader.exists(font_path):
+			preview.add_theme_font_override("font", load(font_path) as Font)
+		set_drag_preview(preview)
 	return data
 
 func _can_drop_data(at_position: Vector2, data) -> bool:
