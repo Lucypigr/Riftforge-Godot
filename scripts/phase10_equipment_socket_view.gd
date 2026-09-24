@@ -72,12 +72,15 @@ func _get_drag_data(at_position: Vector2):
 		"socket_index": socket_index,
 		"gem_id": gem_id
 	}
-	var preview := Label.new()
-	preview.text = GemRules.display_name(gem_id)
-	preview.add_theme_font_size_override("font_size", 15)
-	if font != null:
-		preview.add_theme_font_override("font", font)
-	set_drag_preview(preview)
+	# Drag payload is testable independently. A preview is only legal while
+	# Godot's GUI subsystem is in a real drag lifecycle.
+	if get_viewport().gui_is_dragging():
+		var preview := Label.new()
+		preview.text = GemRules.display_name(gem_id)
+		preview.add_theme_font_size_override("font_size", 15)
+		if font != null:
+			preview.add_theme_font_override("font", font)
+		set_drag_preview(preview)
 	return data
 
 func _can_drop_data(at_position: Vector2, data) -> bool:
