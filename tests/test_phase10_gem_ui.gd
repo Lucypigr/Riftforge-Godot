@@ -117,7 +117,7 @@ func _run() -> void:
 
 	# Incompatible socket color is refused without deleting the backpack gem.
 	var shock_index := find_gem(game.inventory, "shock_nova")
-	var shock_count_before := game.inventory.size()
+	var shock_count_before: int = game.inventory.size()
 	check(not game.insert_inventory_gem(shock_index, "armor", 1), "blue active gem is rejected by red socket")
 	check(game.inventory.size() == shock_count_before and find_gem(game.inventory, "shock_nova") >= 0 and game.last_gem_error.contains("不相容"), "failed insert returns gem to original backpack state")
 
@@ -200,7 +200,7 @@ func _run() -> void:
 	check(loaded.equipment["weapon"]["socket_links"] == [[0,1],[1,2]], "socket links survive reload with integer indices")
 	check(find_gem(loaded.inventory, "shock_nova") >= 0 and int(loaded.inventory[0]["grid_x"]) == saved_x and int(loaded.inventory[0]["grid_y"]) == saved_y, "backpack gem placement survives reload")
 	check(loaded.skill_gem(0) == "ember_bolt" and "ember_bolt" in loaded.installed_skill_gems(), "hotbar rebuild points only to still-installed active gem")
-	var tooltip := loaded.skill_tooltip("ember_bolt")
+	var tooltip: String = str(loaded.skill_tooltip("ember_bolt"))
 	check(tooltip.contains("分裂輔助") and tooltip.contains("穿透輔助") and not tooltip.contains("�"), "reloaded skill tooltip rebuilds linked support effects with readable text")
 	var reloaded_text := all_ui_text(loaded.hud._inventory_panel)
 	check(not reloaded_text.contains("�"), "reloaded integrated UI remains free of replacement glyphs")
