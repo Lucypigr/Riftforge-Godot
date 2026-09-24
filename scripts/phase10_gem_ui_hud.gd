@@ -147,7 +147,7 @@ func _build_inventory() -> void:
 	return_button.text = "將選中插槽寶石取回背包"
 	return_button.pressed.connect(_return_selected_socket_gem)
 	detail_box.add_child(return_button)
-	detail_box.add_child(_label("手機：點寶石 → 點插槽；點插槽寶石 → 點背包空格。\nPC：直接拖曳寶石。", 12))
+	detail_box.add_child(_label("手機：點寶石 → 點插槽（裝上）；點插槽寶石 → 點背包空格（移除）。\nPC：直接拖曳寶石。", 12))
 
 	# Compatibility fields remain alive for existing Phase 8 regressions but are
 	# not separate user-facing pages anymore.
@@ -308,19 +308,31 @@ func _on_socket_pressed(slot: String, socket_index: int) -> void:
 		_refresh_inventory()
 		return
 	var gem_id: String = str(game.socket_gem(slot, socket_index))
+	var item: Dictionary = game.equipment_socket_item(slot)
+	var colors: Array = item.get("socket_colors", [])
+	var color := str(colors[socket_index]) if socket_index < colors.size() else ""
+	var equipment_label := "武器" if slot == "weapon" else "護甲"
+	var link_state := _socket_link_state(item, socket_index)
 	if not gem_id.is_empty():
 		_carry_source = {"kind": "socket_gem", "equipment_slot": slot, "socket_index": socket_index, "gem_id": gem_id}
 		_selected_index = -1
-		_gem_detail.text = game.gem_tooltip(gem_id)
+		_gem_detail.text = game.gem_tooltip(gem_id) + "\n插槽：%s｜%s｜%s" % [equipment_label, _socket_color_label(color), link_state]
 	else:
 		_carry_source.clear()
 		_selected_index = -1
-		var item: Dictionary = game.equipment_socket_item(slot)
-		var colors: Array = item.get("socket_colors", [])
-		var links: Array = item.get("socket_links", [])
-		var color := str(colors[socket_index]) if socket_index < colors.size() else "未知"
-		_gem_detail.text = "插槽資訊\n裝備：%s\n插槽：%d\n顏色：%s\n連線：%s\n未連線的輔助寶石不會生效。" % [slot, socket_index + 1, color, str(links)]
+		_gem_detail.text = "插槽資訊\n裝備：%s\n插槽：%d\n顏色：%s\n連線：%s\n未連線的輔助寶石不會生效。" % [equipment_label, socket_index + 1, _socket_color_label(color), link_state]
 	_refresh_inventory()
+
+func _socket_link_state(item: Dictionary, socket_index: int) -> String:
+	for raw_link in item.get("socket_links", []):
+		if not (raw_link is Array) or raw_link.size() != 2:
+			continue
+		if int(raw_link[0]) == socket_index or int(raw_link[1]) == socket_index:
+			return "已連線"
+	return "未連線"
+
+func _socket_color_label(color: String) -> String:
+	return str({"red":"紅色", "green":"綠色", "blue":"藍色", "white":"白色"}.get(color, "未知"))
 
 func _on_equipment_drop(data: Dictionary, slot: String, socket_index: int) -> void:
 	var ok := false
