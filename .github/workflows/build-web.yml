@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   web:
-    name: Export stable game and isolated Phase 2/3/4/5/6/7/8 previews
+    name: Export stable game and isolated Phase 2/3/4/5/6/7/8/10 previews
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -302,7 +302,36 @@ jobs:
           test -n "$(find build/web/preview/phase8 -maxdepth 1 -name '*.pck' -print -quit)"
           echo 'PHASE8 PREVIEW READY INSIDE WEB ARTIFACT'
 
-      - name: Upload stable and seven browser previews
+      - name: Checkout CI-verified Phase 10 gem expansion separately (not merged)
+        uses: actions/checkout@v4
+        with:
+          ref: 4de7b4b9a83fc99c449622cd79a570de5d28b8cb
+          path: phase10-src
+          persist-credentials: false
+
+      - name: Test and export Phase 10 gem expansion to isolated preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p phase10-src/fonts build/web/preview/phase10
+          cp fonts/NotoSansTC.ttf phase10-src/fonts/NotoSansTC.ttf
+          cp fonts/OFL.txt build/web/preview/phase10/NOTO_FONT_LICENSE.txt
+          godot --headless --path phase10-src --editor --quit 2>&1 | tee /tmp/phase10-import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase10-import.log; then exit 1; fi
+          godot --headless --path phase10-src --script res://tests/test_mobile_world_interaction.gd 2>&1 | tee /tmp/phase10-mobile-world.log
+          grep -Fq 'MOBILE WORLD INTERACTION: 28 passed / 0 failed' /tmp/phase10-mobile-world.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' /tmp/phase10-mobile-world.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+          godot --headless --path phase10-src --script res://tests/test_phase10_gem_expansion.gd 2>&1 | tee /tmp/phase10-gems.log
+          grep -Fq 'PHASE10 GEM EXPANSION: 89 passed / 0 failed' /tmp/phase10-gems.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' /tmp/phase10-gems.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+          godot --headless --path phase10-src --export-release 'Web' "$GITHUB_WORKSPACE/build/web/preview/phase10/index.html" 2>&1 | tee /tmp/phase10-export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' /tmp/phase10-export.log; then exit 1; fi
+          test -s build/web/preview/phase10/index.html
+          test -n "$(find build/web/preview/phase10 -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/web/preview/phase10 -maxdepth 1 -name '*.pck' -print -quit)"
+          echo 'PHASE10 PREVIEW READY INSIDE WEB ARTIFACT'
+
+      - name: Upload stable and eight browser previews
         uses: actions/upload-artifact@v4
         with:
           name: riftforge-web
