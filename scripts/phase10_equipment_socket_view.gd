@@ -36,7 +36,7 @@ func _socket_hit(point: Vector2) -> Dictionary:
 		var count := int(item.get("socket_count", 0))
 		for i in range(count):
 			var center := socket_center(slot, i)
-			if center != Vector2.ZERO and point.distance_squared_to(center) <= 22.0 * 22.0:
+			if center != Vector2.ZERO and point.distance_squared_to(center) <= 28.0 * 28.0:
 				return {"slot": slot, "socket": i}
 	return {}
 
