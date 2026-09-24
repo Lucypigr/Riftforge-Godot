@@ -24,8 +24,8 @@ func show_equipment(source: Dictionary, focus_slot: String = "", focus_socket: i
 	queue_redraw()
 
 func socket_center(slot: String, socket_index: int) -> Vector2:
-	var key := "%s:%d" % [slot, socket_index]
-	return _socket_centers.get(key, Vector2.ZERO)
+	var rect := _slot_rect(slot)
+	return Vector2(rect.position.x + 58.0 + float(socket_index) * 66.0, rect.position.y + 104.0)
 
 func _slot_rect(slot: String) -> Rect2:
 	return Rect2(Vector2(9, 8), Vector2(360, 138)) if slot == "weapon" else Rect2(Vector2(387, 8), Vector2(360, 138))
