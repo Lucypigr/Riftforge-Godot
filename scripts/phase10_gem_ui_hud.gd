@@ -282,6 +282,12 @@ func _on_grid_cell(x: int, y: int) -> void:
 			_selected_index = index
 		else:
 			announce(game.last_gem_error)
+	elif _selected_index >= 0 and _selected_index < game.inventory.size():
+		# Preserve Phase 8 click-to-move behavior for ordinary multi-cell items.
+		if Grid10.move(game.inventory, _selected_index, x, y):
+			game.save_progress()
+		else:
+			announce("放置失敗：超出背包範圍或與其他物品重疊")
 	_refresh_inventory()
 
 func _on_socket_pressed(slot: String, socket_index: int) -> void:
