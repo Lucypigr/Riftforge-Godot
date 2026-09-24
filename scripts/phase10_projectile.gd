@@ -5,6 +5,7 @@ var game
 var runtime
 var skill_definition
 var resolved: Dictionary = {}
+var enemy_owned: bool = false
 var direction := Vector3.FORWARD
 var speed: float = 20.0
 var max_distance: float = 20.0
