@@ -1,0 +1,64 @@
+name: Phase 10 gem UI regression
+on:
+  push:
+    branches: [feature/phase10-gem-ui-poe-layout]
+  pull_request:
+    branches: [fix/phase8-mobile-world-interaction]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Traditional Chinese font and Web templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fonts "$HOME/.local/share/godot/export_templates" build/phase10-ui
+          cp -a /root/.local/share/godot/export_templates/. "$HOME/.local/share/godot/export_templates/"
+          wget --quiet --tries=3 --timeout=45 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/NotoSansTC%5Bwght%5D.ttf' -O fonts/NotoSansTC.ttf
+          wget --quiet --tries=3 --timeout=45 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanstc/OFL.txt' -O fonts/OFL.txt
+          test "$(stat -c%s fonts/NotoSansTC.ttf)" -gt 1000000
+      - name: Godot import
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --editor --quit 2>&1 | tee import.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' import.log; then exit 1; fi
+      - name: Headless startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --quit-after 5 2>&1 | tee startup.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' startup.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Full Phase 2-8 regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          for spec in             'test_phase2_skill_core.gd|PHASE2 TEST RESULT: 20 passed / 0 failed'             'test_phase2_cast_feedback.gd|PHASE2 CAST FEEDBACK: 11 passed / 0 failed'             'test_phase2_multitouch.gd|PHASE2 MULTITOUCH: 9 passed / 0 failed'             'test_phase3_inventory.gd|PHASE3 INVENTORY: 28 passed / 0 failed'             'test_phase4_combat_v2.gd|PHASE4 COMBAT V2: 30 passed / 0 failed'             'test_phase5_weapon_loot.gd|PHASE5 WEAPON LOOT: 24 passed / 0 failed'             'test_phase6_hud.gd|PHASE6 ARPG HUD: 20 passed / 0 failed'             'test_phase7_hotbar.gd|PHASE7 GEM HOTBAR: 23 passed / 0 failed'             'test_mobile_world_interaction.gd|MOBILE WORLD INTERACTION: 28 passed / 0 failed'; do
+            script="${spec%%|*}"
+            marker="${spec#*|}"
+            godot --headless --path . --script "res://tests/$script" 2>&1 | tee "$script.log"
+            grep -Fq "$marker" "$script.log"
+            if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' "$script.log" | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+          done
+      - name: Phase 10 integrated gem UI regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --script res://tests/test_phase10_gem_ui.gd 2>&1 | tee phase10-ui.log
+          grep -Eq '^PHASE10 GEM UI: [1-9][0-9]* passed / 0 failed$' phase10-ui.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:|FAIL ' phase10-ui.log | grep -v 'ERROR: Parameter "m" is null.' | grep -q .; then exit 1; fi
+      - name: Export Phase 10 UI Web build
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --export-release Web build/phase10-ui/index.html 2>&1 | tee export.log
+          if grep -Eq 'SCRIPT ERROR:|Parse Error:|ERROR:' export.log; then exit 1; fi
+          test -s build/phase10-ui/index.html
+          test -n "$(find build/phase10-ui -maxdepth 1 -name '*.wasm' -print -quit)"
+          test -n "$(find build/phase10-ui -maxdepth 1 -name '*.pck' -print -quit)"
+          echo 'PHASE10 UI WEB EXPORT READY'
