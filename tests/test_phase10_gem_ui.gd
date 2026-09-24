@@ -188,10 +188,28 @@ func _run() -> void:
 	check(not game.move_socket_gem_to_inventory("weapon", 1), "full backpack refuses socket gem removal")
 	check(game.socket_gem("weapon", 1) == "scatter" and game.inventory.size() == 180, "full bag rejection never loses or duplicates gem")
 
+	# Mobile inventory uses scrolling at full logical size instead of shrinking
+	# 42px cells and sockets into tiny targets.
+	controls.enabled = true
+	controls.surface.visible = true
+	controls.surface.size = Vector2(844, 390)
+	game.hud.set_mobile_layout(true)
+	controls._layout()
+	check(game.hud._inventory_panel.scale.is_equal_approx(Vector2.ONE), "mobile inventory panel is not globally downscaled")
+	check(absf(game.hud._inventory_panel.offset_right - game.hud._inventory_panel.offset_left - 820.0) < 0.5, "mobile inventory panel fits landscape viewport width")
+	check(game.hud._detail_panel.get_parent() == game.hud._bag_page, "mobile detail panel reflows below equipment and backpack")
+	check(game.hud._inventory_scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_AUTO, "mobile integrated surface can scroll vertically")
+	var wide_hit := game.hud._equipment_socket_view._socket_hit(game.hud._equipment_socket_view.socket_center("weapon", 0) + Vector2(27, 0))
+	check(not wide_hit.is_empty(), "socket touch target remains at least 56 logical pixels wide")
+	game.hud.set_mobile_layout(false)
+	check(game.hud._detail_panel.get_parent() == game.hud._inventory_body, "desktop layout restores side detail panel")
+	game.hud.set_mobile_layout(true)
+
 	# UI blocks combat/world touch path and closing restores it.
 	controls.enabled = true
 	controls.surface.visible = true
 	controls.surface.size = Vector2(1280,720)
+	controls._layout()
 	game.mobile_active = true
 	game.player.position = game._portal_position + Vector3(0,0.9,0)
 	hud.toggle_inventory()
