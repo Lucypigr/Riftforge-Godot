@@ -235,9 +235,9 @@ func _refresh_inventory() -> void:
 		_gem_detail.text = "選擇裝備插槽或背包中的寶石以查看：\n名稱、顏色、主動/輔助、Tags、等級、支援效果與最終技能資訊。"
 
 func _update_selection() -> void:
-	var has_selection := _selected_index >= 0 and _selected_index < game.inventory.size()
+	var has_selection: bool = _selected_index >= 0 and _selected_index < game.inventory.size()
 	_item_details.visible = has_selection
-	_equip_button.disabled = not has_selection or str(game.inventory[_selected_index].get("slot", "")) == "gem" if has_selection else true
+	_equip_button.disabled = true if not has_selection else str(game.inventory[_selected_index].get("slot", "")) == "gem"
 	if not has_selection:
 		_item_details.text = ""
 		return
@@ -301,7 +301,7 @@ func _on_socket_pressed(slot: String, socket_index: int) -> void:
 			announce(game.last_gem_error)
 		_refresh_inventory()
 		return
-	var gem_id := game.socket_gem(slot, socket_index)
+	var gem_id: String = str(game.socket_gem(slot, socket_index))
 	if not gem_id.is_empty():
 		_carry_source = {"kind": "socket_gem", "equipment_slot": slot, "socket_index": socket_index, "gem_id": gem_id}
 		_selected_index = -1
@@ -387,5 +387,5 @@ func _process(delta: float) -> void:
 	if game == null:
 		return
 	for slot in range(_skill_buttons.size()):
-		var gem_id := game.skill_gem(slot)
+		var gem_id: String = str(game.skill_gem(slot))
 		_skill_buttons[slot].tooltip_text = game.skill_tooltip(gem_id)
