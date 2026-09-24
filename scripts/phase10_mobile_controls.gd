@@ -8,12 +8,11 @@ func _layout() -> void:
 	super._layout()
 	if not enabled or not is_instance_valid(game) or not is_instance_valid(game.hud):
 		return
-	if "GEM_PANEL_SIZE" in game.hud:
-		var design_size: Vector2 = game.hud.GEM_PANEL_SIZE
-		var panel: PanelContainer = game.hud._gems_panel
-		panel.pivot_offset = design_size * 0.5
-		var fit := minf(1.0, minf((surface.size.x - 28.0) / design_size.x, (surface.size.y - 24.0) / design_size.y))
-		panel.scale = Vector2.ONE * maxf(0.2, fit)
+	var design_size: Vector2 = game.hud.GEM_PANEL_SIZE
+	var panel: PanelContainer = game.hud._gems_panel
+	panel.pivot_offset = design_size * 0.5
+	var fit := minf(1.0, minf((surface.size.x - 28.0) / design_size.x, (surface.size.y - 24.0) / design_size.y))
+	panel.scale = Vector2.ONE * maxf(0.2, fit)
 
 func _input(event: InputEvent) -> void:
 	if not enabled:
