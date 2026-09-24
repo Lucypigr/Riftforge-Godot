@@ -12,6 +12,10 @@ var _gem_detail: RichTextLabel
 var _carry_source: Dictionary = {}
 var _mode_label: Label
 var _font: Font
+var _inventory_scroll: ScrollContainer
+var _inventory_outer: VBoxContainer
+var _inventory_body: HBoxContainer
+var _detail_panel: PanelContainer
 
 func initialize(owner_game) -> void:
 	super.initialize(owner_game)
@@ -44,9 +48,19 @@ func _build_inventory() -> void:
 	frame.content_margin_bottom = 10
 	_inventory_panel.add_theme_stylebox_override("panel", frame)
 
-	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 6)
-	_inventory_panel.add_child(outer)
+	_inventory_scroll = ScrollContainer.new()
+	_inventory_scroll.name = "IntegratedInventoryScroll"
+	_inventory_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inventory_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_inventory_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_inventory_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_inventory_panel.add_child(_inventory_scroll)
+
+	_inventory_outer = VBoxContainer.new()
+	_inventory_outer.custom_minimum_size = Vector2(1084, 0)
+	_inventory_outer.add_theme_constant_override("separation", 6)
+	_inventory_scroll.add_child(_inventory_outer)
+	var outer := _inventory_outer
 
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 8)
@@ -76,10 +90,11 @@ func _build_inventory() -> void:
 	close.pressed.connect(close_panels)
 	header.add_child(close)
 
-	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 12)
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	outer.add_child(body)
+	_inventory_body = HBoxContainer.new()
+	_inventory_body.add_theme_constant_override("separation", 12)
+	_inventory_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(_inventory_body)
+	var body := _inventory_body
 
 	_bag_page = VBoxContainer.new()
 	_bag_page.name = "IntegratedEquipmentAndBag"
@@ -119,8 +134,9 @@ func _build_inventory() -> void:
 	_item_details.visible = false
 	_bag_page.add_child(_item_details)
 
-	var detail_panel := PanelContainer.new()
-	detail_panel.custom_minimum_size = Vector2(300, 610)
+	_detail_panel = PanelContainer.new()
+	_detail_panel.custom_minimum_size = Vector2(300, 610)
+	var detail_panel := _detail_panel
 	var detail_style := StyleBoxFlat.new()
 	detail_style.bg_color = Color("#121820")
 	detail_style.border_color = Color("#514838")
@@ -168,6 +184,40 @@ func _build_inventory() -> void:
 		_equipment_page.add_child(node)
 
 	_refresh_inventory()
+
+func set_mobile_layout(active: bool) -> void:
+	super.set_mobile_layout(active)
+	if _inventory_panel == null or _inventory_scroll == null or _detail_panel == null:
+		return
+	if active:
+		# Mobile keeps 42px backpack cells and full-size socket targets. The
+		# integrated surface scrolls instead of shrinking the whole UI.
+		if _detail_panel.get_parent() != _bag_page:
+			_detail_panel.get_parent().remove_child(_detail_panel)
+			_bag_page.add_child(_detail_panel)
+		_detail_panel.custom_minimum_size = Vector2(756, 220)
+		_gem_detail.custom_minimum_size = Vector2(720, 150)
+		_inventory_outer.custom_minimum_size = Vector2(772, 0)
+	else:
+		if _detail_panel.get_parent() != _inventory_body:
+			_detail_panel.get_parent().remove_child(_detail_panel)
+			_inventory_body.add_child(_detail_panel)
+			_inventory_body.move_child(_detail_panel, 1)
+		_detail_panel.custom_minimum_size = Vector2(300, 610)
+		_gem_detail.custom_minimum_size = Vector2(278, 500)
+		_inventory_outer.custom_minimum_size = Vector2(1084, 0)
+
+func set_mobile_inventory_viewport(view_size: Vector2) -> void:
+	if _inventory_panel == null:
+		return
+	var width := maxf(280.0, view_size.x - 24.0)
+	var height := maxf(260.0, view_size.y - 18.0)
+	_inventory_panel.scale = Vector2.ONE
+	_inventory_panel.pivot_offset = Vector2(width, height) * 0.5
+	_inventory_panel.offset_left = -width * 0.5
+	_inventory_panel.offset_right = width * 0.5
+	_inventory_panel.offset_top = -height * 0.5
+	_inventory_panel.offset_bottom = height * 0.5
 
 func _build_gems() -> void:
 	# G opens the exact same integrated equipment/socket/backpack surface.
