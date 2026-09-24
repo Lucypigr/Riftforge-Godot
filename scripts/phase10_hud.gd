@@ -67,10 +67,10 @@ func _refresh_phase10_gems() -> void:
 	for instance in game.gem_instances:
 		if not (instance is Dictionary):
 			continue
-		var gem_id := str(instance.get("gem_id", ""))
-		var definition := GemSystem10.definition(gem_id)
+		var gem_id: String = str(instance.get("gem_id", ""))
+		var definition: Dictionary = GemSystem10.definition(gem_id)
 		var tags: Array = definition.get("tags", [])
-		var line := "%s Lv.%d｜%s｜%s｜%s" % [
+		var line: String = "%s Lv.%d｜%s｜%s｜%s" % [
 			GemSystem10.display_name(gem_id),
 			int(instance.get("level", 1)),
 			str(definition.get("color", "")),
@@ -89,28 +89,28 @@ func _refresh_skill_pickers() -> void:
 		return
 	var installed: Array = game.installed_skill_gems()
 	for slot in range(_skill_pickers.size()):
-		var picker := _skill_pickers[slot]
+		var picker: OptionButton = _skill_pickers[slot]
 		var label = picker.get_parent().get_child(slot * 2)
 		if label is Label:
 			label.text = game.skill_binding_name(slot)
 		picker.clear()
 		picker.add_item("空白")
 		picker.set_item_metadata(0, "")
-		var selected := 0
+		var selected: int = 0
 		for gem_id in installed:
-			var index := picker.item_count
+			var index: int = picker.item_count
 			picker.add_item(game.skill_name(str(gem_id)))
 			picker.set_item_metadata(index, str(gem_id))
 			if str(gem_id) == game.skill_gem(slot):
 				selected = index
 		picker.select(selected)
-		var current := game.skill_gem(slot)
+		var current: String = game.skill_gem(slot)
 		picker.tooltip_text = game.skill_tooltip(current) if not current.is_empty() else "空技能槽"
 
 func _on_skill_picker_selected(option: int, slot: int, picker: OptionButton) -> void:
 	if game == null or option < 0 or option >= picker.item_count:
 		return
-	var gem_id := str(picker.get_item_metadata(option))
+	var gem_id: String = str(picker.get_item_metadata(option))
 	if game.assign_skill_slot(slot, gem_id):
 		_rendered_gems[slot] = "__refresh__"
 		_refresh_phase10_gems()
@@ -120,5 +120,5 @@ func _process(delta: float) -> void:
 	if game == null:
 		return
 	for slot in range(_skill_buttons.size()):
-		var gem_id := game.skill_gem(slot)
+		var gem_id: String = game.skill_gem(slot)
 		_skill_buttons[slot].tooltip_text = game.skill_tooltip(gem_id) if not gem_id.is_empty() else "空技能槽"
