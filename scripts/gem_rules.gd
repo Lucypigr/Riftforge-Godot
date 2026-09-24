@@ -195,9 +195,9 @@ static func gem_detail(gem_id: String) -> String:
 	var gem := definition(gem_id)
 	if gem.is_empty():
 		return "未知寶石"
-	var color_name := {"red": "紅色", "green": "綠色", "blue": "藍色"}.get(str(gem.get("color", "")), "無色")
-	var kind_name := "主動" if is_active(gem_id) else "輔助"
-	var lines := [
+	var color_name: String = str({"red": "紅色", "green": "綠色", "blue": "藍色"}.get(str(gem.get("color", "")), "無色"))
+	var kind_name: String = "主動" if is_active(gem_id) else "輔助"
+	var lines: Array = [
 		"%s" % display_name(gem_id),
 		"%s｜%s｜等級 %d" % [color_name, kind_name, int(gem.get("level", 1))],
 		"Tags: %s" % ", ".join(PackedStringArray(gem.get("tags", []))),
