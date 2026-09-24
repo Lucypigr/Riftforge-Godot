@@ -68,11 +68,11 @@ func _run() -> void:
 	check("attack" in Gems.definition("rift_cleave").get("tags", []), "Rift Cleave carries attack tag")
 
 	# Compatibility matrix.
-	var cleave := Gems.definition("rift_cleave")
-	var ember := Gems.definition("ember_bolt")
-	var nova := Gems.definition("shock_nova")
-	var field := Gems.definition("cinder_field")
-	var frost := Gems.definition("frost_shard")
+	var cleave: Dictionary = Gems.definition("rift_cleave")
+	var ember: Dictionary = Gems.definition("ember_bolt")
+	var nova: Dictionary = Gems.definition("shock_nova")
+	var field: Dictionary = Gems.definition("cinder_field")
+	var frost: Dictionary = Gems.definition("frost_shard")
 	check(Gems.compatible(cleave, Gems.definition("faster_attacks")), "Faster Attacks supports melee attack")
 	check(not Gems.compatible(ember, Gems.definition("faster_attacks")), "Faster Attacks rejects spell projectile")
 	check(not Gems.compatible(nova, Gems.definition("faster_attacks")), "Faster Attacks rejects nova spell")
@@ -88,30 +88,30 @@ func _run() -> void:
 	check(not Gems.compatible(nova, Gems.definition("faster_projectiles")), "Nova plus Faster Projectiles is rejected")
 
 	# Socket graph and pipeline.
-	var multi := _instances(["ember_bolt","frost_shard","faster_projectiles"])
-	var multi_links := _links(3)
+	var multi: Array = _instances(["ember_bolt","frost_shard","faster_projectiles"])
+	var multi_links: Array = _links(3)
 	check(Gems.connected_component(0, multi, multi_links).size() == 3, "SocketGraph finds complete connected component")
 	check("faster_projectiles" in Gems.connected_support_ids("ember_bolt", multi, multi_links), "support reaches first active in shared group")
 	check("faster_projectiles" in Gems.connected_support_ids("frost_shard", multi, multi_links), "same support reaches second compatible active in group")
-	var unlinked := Gems.resolve("frost_shard", _instances(["frost_shard","faster_projectiles"]), [])
+	var unlinked: Dictionary = Gems.resolve("frost_shard", _instances(["frost_shard","faster_projectiles"]), [])
 	check(is_equal_approx(float(unlinked["projectile_speed"]), 18.0), "unlinked support has no effect")
-	var fast_frost := Gems.resolve("frost_shard", _instances(["frost_shard","faster_projectiles"]), [[0,1]])
+	var fast_frost: Dictionary = Gems.resolve("frost_shard", _instances(["frost_shard","faster_projectiles"]), [[0,1]])
 	check(float(fast_frost["projectile_speed"]) > 18.0, "Faster Projectiles increases actual travel speed")
 	check(is_equal_approx(float(fast_frost["cast_range"]), 24.0), "Faster Projectiles does not increase fixed world range")
 	check(int(fast_frost["mana_cost"]) == 8, "support mana multiplier changes resolved mana cost")
-	var duplicate_chain := Gems.resolve("ember_bolt", _instances(["ember_bolt","chain_support","chain_support"]), [[0,1],[1,2]])
+	var duplicate_chain: Dictionary = Gems.resolve("ember_bolt", _instances(["ember_bolt","chain_support","chain_support"]), [[0,1],[1,2]])
 	check(int(duplicate_chain["chain"]) == 2, "duplicate same support applies only once")
 	check((duplicate_chain["supports"] as Array).count("chain_support") == 1, "duplicate support is deduplicated in ResolvedSkill")
-	var pierce := Gems.resolve("ember_bolt", _instances(["ember_bolt","pierce"]), [[0,1]])
+	var pierce: Dictionary = Gems.resolve("ember_bolt", _instances(["ember_bolt","pierce"]), [[0,1]])
 	check(int(pierce["pierce"]) == 1, "Pierce support adds a real pierce")
-	var area_cleave := Gems.resolve("rift_cleave", _instances(["rift_cleave","faster_attacks","increased_area"]), [[0,1],[1,2]])
+	var area_cleave: Dictionary = Gems.resolve("rift_cleave", _instances(["rift_cleave","faster_attacks","increased_area"]), [[0,1],[1,2]])
 	check(float(area_cleave["interval"]) < float(cleave["interval"]), "Faster Attacks lowers attack interval")
 	check(float(area_cleave["aoe_radius"]) > float(cleave["aoe_radius"]), "Increased Area expands cleave radius")
-	var area_field := Gems.resolve("cinder_field", _instances(["cinder_field","increased_area"]), [[0,1]])
+	var area_field: Dictionary = Gems.resolve("cinder_field", _instances(["cinder_field","increased_area"]), [[0,1]])
 	check(float(area_field["aoe_radius"]) > float(field["aoe_radius"]) and float(area_field["duration"]) == float(field["duration"]), "Increased Area expands ground field without deleting duration")
-	var added_fire := Gems.resolve("ember_bolt", _instances(["ember_bolt","added_fire"]), [[0,1]])
+	var added_fire: Dictionary = Gems.resolve("ember_bolt", _instances(["ember_bolt","added_fire"]), [[0,1]])
 	check(float((added_fire["damage_components"] as Dictionary).get("fire", 0.0)) > float(ember["base_damage"]), "Added Fire contributes through resolved typed damage")
-	var added_cold := Gems.resolve("ember_bolt", _instances(["ember_bolt","added_cold"]), [[0,1]])
+	var added_cold: Dictionary = Gems.resolve("ember_bolt", _instances(["ember_bolt","added_cold"]), [[0,1]])
 	check((added_cold["damage_components"] as Dictionary).has("cold"), "Added Cold contributes a cold damage component")
 	check(not (added_cold["status_effects"] as Array).is_empty(), "Added Cold creates a resolved chill/slow status")
 
@@ -135,7 +135,7 @@ func _run() -> void:
 	_set_state(game, ["frost_shard"], [])
 	game.skill_slots = ["frost_shard","","","","",""]
 	var frost_enemy = _enemy(game, Vector3(2.0, 0, 0))
-	var frost_hp := frost_enemy.hp
+	var frost_hp: float = frost_enemy.hp
 	check(game.cast_active_gem("frost_shard", Vector3.RIGHT), "Frost Shard cast succeeds")
 	var frost_projectile = _find_script_child(game, "phase10_projectile.gd")
 	check(frost_projectile != null, "Frost Shard creates resolved projectile runtime")
@@ -147,20 +147,20 @@ func _run() -> void:
 	# Chain projectile hit bookkeeping.
 	_clear_combat_nodes(game)
 	_set_state(game, ["arc_spark","chain_support"], [[0,1]])
-	var chain_resolved := game.resolved_skill("arc_spark")
+	var chain_resolved: Dictionary = game.resolved_skill("arc_spark")
 	check(int(chain_resolved["chain"]) == 4, "Arc Spark base chain plus support resolves to four chains")
 	var first = _enemy(game, Vector3(2.0, 0, 0))
 	var second = _enemy(game, Vector3(5.0, 0, 0))
 	check(game.cast_active_gem("arc_spark", Vector3.RIGHT), "Arc Spark cast succeeds")
 	var chain_projectile = _find_script_child(game, "phase10_projectile.gd")
 	if chain_projectile != null:
-		var first_hp := first.hp
+		var first_hp: float = first.hp
 		chain_projectile._resolve_hit(first, first.global_position)
 		check(first.hp < first_hp, "first chain target takes damage")
 		check(first.get_instance_id() in chain_projectile._hit_ids, "first chain target is recorded")
-		var desired := (second.global_position - chain_projectile.global_position).normalized()
+		var desired: Vector3 = (second.global_position - chain_projectile.global_position).normalized()
 		check(chain_projectile.direction.dot(desired) > 0.85, "chain retargets only after first legal hit")
-		var second_hp := second.hp
+		var second_hp: float = second.hp
 		chain_projectile._resolve_hit(second, second.global_position)
 		check(second.hp < second_hp, "second chain target takes decayed follow-up damage")
 		check(chain_projectile._hit_ids.count(first.get_instance_id()) == 1, "chain bookkeeping never repeats the same target")
@@ -192,8 +192,8 @@ func _run() -> void:
 	_set_state(game, ["rift_cleave","faster_attacks","increased_area"], [[0,1],[1,2]])
 	var front = _enemy(game, Vector3(3.7, 0, 0))
 	var back = _enemy(game, Vector3(-2.0, 0, 0))
-	var front_hp := front.hp
-	var back_hp := back.hp
+	var front_hp: float = front.hp
+	var back_hp: float = back.hp
 	check(game.cast_active_gem("rift_cleave", Vector3.RIGHT), "Rift Cleave cast succeeds")
 	check(front.hp < front_hp, "increased cleave radius reaches real front target beyond base radius")
 	check(is_equal_approx(back.hp, back_hp), "directional cleave does not hit enemy behind player")
@@ -203,7 +203,7 @@ func _run() -> void:
 	_clear_combat_nodes(game)
 	_set_state(game, ["cinder_field","increased_area"], [[0,1]])
 	var ground_target = _enemy(game, Vector3(7.0, 0, 0))
-	var ground_hp := ground_target.hp
+	var ground_hp: float = ground_target.hp
 	check(game.cast_active_gem("cinder_field", Vector3.RIGHT), "Cinder Field cast succeeds")
 	var ground = _find_script_child(game, "phase10_ground_area.gd")
 	check(ground != null and ground.remaining > 0.0, "ground area exists for a real duration")
@@ -219,8 +219,8 @@ func _run() -> void:
 	_clear_combat_nodes(game)
 	_set_state(game, ["frost_shard","faster_projectiles"], [[0,1]])
 	game.player.mana = 0.0
-	var mana_before := game.player.mana
-	var cooldown_before := game.skill_cooldown("frost_shard")
+	var mana_before: float = game.player.mana
+	var cooldown_before: float = game.skill_cooldown("frost_shard")
 	check(not game.cast_active_gem("frost_shard", Vector3.RIGHT), "insufficient mana rejects resolved cast")
 	check(is_equal_approx(game.player.mana, mana_before), "failed cast spends no mana")
 	check(is_equal_approx(game.skill_cooldown("frost_shard"), cooldown_before), "failed cast starts no cooldown")
@@ -238,7 +238,7 @@ func _run() -> void:
 	touch.index = 70
 	touch.position = controls._center("attack")
 	touch.pressed = true
-	var before_mobile := _projectile_count(game)
+	var before_mobile: int = _projectile_count(game)
 	controls._input(touch)
 	check(_projectile_count(game) == before_mobile and controls.attack_id == 70, "mobile press enters aim state without casting")
 	var drag := InputEventScreenDrag.new()
@@ -257,7 +257,7 @@ func _run() -> void:
 
 	# Save/load rebuilds from definitions + socket state, not a serialized RuntimeSkill.
 	game.mobile_active = false
-	var saved_instances := _instances(["frost_shard","chain_support"])
+	var saved_instances: Array = _instances(["frost_shard","chain_support"])
 	saved_instances[0]["level"] = 3
 	game.set_phase10_socket_state(saved_instances, [[0,1]])
 	game.skill_slots = ["frost_shard","","","","",""]
