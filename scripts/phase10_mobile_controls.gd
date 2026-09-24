@@ -11,7 +11,7 @@ func _layout() -> void:
 	var design_size: Vector2 = game.hud.GEM_PANEL_SIZE
 	var panel: PanelContainer = game.hud._gems_panel
 	panel.pivot_offset = design_size * 0.5
-	var fit := minf(1.0, minf((surface.size.x - 28.0) / design_size.x, (surface.size.y - 24.0) / design_size.y))
+	var fit: float = minf(1.0, minf((surface.size.x - 28.0) / design_size.x, (surface.size.y - 24.0) / design_size.y))
 	panel.scale = Vector2.ONE * maxf(0.2, fit)
 
 func _input(event: InputEvent) -> void:
@@ -72,7 +72,7 @@ func _start_touch(id: int, pos: Vector2) -> void:
 func _update_skill_aim(drag: Vector2, slot: int) -> void:
 	if drag.length() <= 22.0:
 		return
-	var direction := Vector3(drag.x, 0, drag.y).normalized()
+	var direction: Vector3 = Vector3(drag.x, 0, drag.y).normalized()
 	game.aim_direction = direction
 	if slot == 0:
 		dragging_aim = true
@@ -114,12 +114,12 @@ func _process(_delta: float) -> void:
 func _draw_hud() -> void:
 	if not enabled or not is_instance_valid(game.player):
 		return
-	var s := surface.size
+	var s: Vector2 = surface.size
 	if s.x < s.y:
 		surface.draw_rect(Rect2(Vector2.ZERO, s), Color(0.025, 0.047, 0.08, 0.88))
 		_text("請將手機橫向旋轉", s * 0.5, 28)
 		return
-	var base := joy_origin if joy_id >= 0 else _center("joy")
+	var base: Vector2 = joy_origin if joy_id >= 0 else _center("joy")
 	_circle(base, 76.0, Color("#8eb4c9"), joy_id >= 0)
 	surface.draw_circle(base + joy_value * JOY_RADIUS, 31.0, Color(0.45, 0.8, 0.91, 0.80))
 	_text("移動", base + Vector2(0, -91), 16, Color("#c9e2eb"))
@@ -134,7 +134,7 @@ func _draw_hud() -> void:
 		_circle(_center("interact"), 38.0, Color("#eac27c"))
 		_text(interaction_label, _center("interact"), 16)
 	for key in ["inventory", "gems"]:
-		var c := _center(key)
+		var c: Vector2 = _center(key)
 		surface.draw_rect(Rect2(c - Vector2(43, 22), Vector2(86, 44)), Color(0.04, 0.10, 0.15, 0.90), true)
 		surface.draw_rect(Rect2(c - Vector2(43, 22), Vector2(86, 44)), Color("#7292a4"), false, 2.0)
 		_text("背包" if key == "inventory" else "寶石", c, 17)
@@ -145,21 +145,21 @@ func _draw_hud() -> void:
 
 func _draw_skill_button(slot: int, action: String, radius: float, tint: Color, active: bool) -> void:
 	_circle(_center(action), radius, tint, active)
-	var gem_id := game.skill_gem(slot)
-	var label := game.skill_name(gem_id)
+	var gem_id: String = game.skill_gem(slot)
+	var label: String = game.skill_name(gem_id)
 	_text(label if not label.is_empty() else "空", _center(action), 15)
-	var cooldown := game.skill_cooldown(gem_id)
+	var cooldown: float = game.skill_cooldown(gem_id)
 	if cooldown > 0.0:
 		_text("%.1f" % cooldown, _center(action) + Vector2(0, 27), 13, Color("#fbd7a5"))
 
 func _draw_aim_preview(slot: int, center: Vector2) -> void:
-	var delta := Vector2(game.aim_direction.x, game.aim_direction.z) * 78.0
-	var end := center + delta
-	var kind := game.skill_preview_kind(slot)
+	var delta: Vector2 = Vector2(game.aim_direction.x, game.aim_direction.z) * 78.0
+	var end: Vector2 = center + delta
+	var kind: String = game.skill_preview_kind(slot)
 	if kind == "melee_cone":
-		var normal := delta.normalized()
-		var left := normal.rotated(-0.45) * 72.0
-		var right := normal.rotated(0.45) * 72.0
+		var normal: Vector2 = delta.normalized()
+		var left: Vector2 = normal.rotated(-0.45) * 72.0
+		var right: Vector2 = normal.rotated(0.45) * 72.0
 		surface.draw_line(center, center + left, Color("#ffcf7d"), 4.0, true)
 		surface.draw_line(center, center + right, Color("#ffcf7d"), 4.0, true)
 	elif kind == "ground_area":
