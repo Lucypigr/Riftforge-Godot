@@ -47,25 +47,25 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(game) or not is_instance_valid(game.player) or (game.zone != "field" and game.zone != "camp"):
 		queue_free()
 		return
-	var start := global_position
-	var motion := direction * speed * delta
+	var start: Vector3 = global_position
+	var motion: Vector3 = direction * speed * delta
 	global_position += motion
 	_travelled += motion.length()
-	var segment := global_position - start
-	var segment_len_sq := segment.length_squared()
+	var segment: Vector3 = global_position - start
+	var segment_len_sq: float = segment.length_squared()
 	var collided = null
-	var impact := global_position
+	var impact: Vector3 = global_position
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(enemy) or enemy.is_queued_for_deletion() or enemy.hp <= 0.0:
 			continue
 		var enemy_id: int = enemy.get_instance_id()
 		if enemy_id in _hit_ids:
 			continue
-		var fraction := 0.0
+		var fraction: float = 0.0
 		if segment_len_sq > 0.000001:
 			fraction = clampf((enemy.global_position - start).dot(segment) / segment_len_sq, 0.0, 1.0)
-		var closest := start + segment * fraction
-		var radius := 1.05 if enemy.boss else 0.78
+		var closest: Vector3 = start + segment * fraction
+		var radius: float = 1.05 if enemy.boss else 0.78
 		if closest.distance_squared_to(enemy.global_position) <= radius * radius:
 			collided = enemy
 			impact = closest
@@ -89,13 +89,13 @@ func _resolve_hit(enemy, impact: Vector3) -> void:
 		"armor_absorption": enemy.armor_absorption,
 		"resistances": enemy.damage_resistances
 	}
-	var modifiers := game.phase10_hit_modifiers(resolved, _chain_index)
+	var modifiers: Dictionary = game.phase10_hit_modifiers(resolved, _chain_index)
 	var hit: Dictionary = runtime.resolve_projectile_hit(skill_definition, target, modifiers, randf())
 	if bool(hit.get("ok", false)) and bool(hit.get("hit", true)):
-		var damage := int(hit.get("damage", 0))
+		var damage: int = int(hit.get("damage", 0))
 		if damage > 0:
 			enemy.take_hit(damage, global_position)
-		game.phase10_apply_statuses(enemy, resolved)
+			game.phase10_apply_statuses(enemy, resolved)
 			game.spawn_burst(impact, Color("#d7f3ff") if str(resolved.get("damage_type", "")) == "cold" else Color("#ffe29b"), 0.72)
 	else:
 		game.spawn_burst(impact, Color("#94aaba"), 0.40)
@@ -117,13 +117,13 @@ func _next_chain_target(origin: Vector3):
 	if chain_remaining <= 0:
 		return null
 	var best = null
-	var best_distance := float(resolved.get("chain_range", 7.0))
+	var best_distance: float = float(resolved.get("chain_range", 7.0))
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(enemy) or enemy.is_queued_for_deletion() or enemy.hp <= 0.0:
 			continue
 		if enemy.get_instance_id() in _hit_ids:
 			continue
-		var distance := enemy.global_position.distance_to(origin)
+		var distance: float = enemy.global_position.distance_to(origin)
 		if distance < best_distance:
 			best_distance = distance
 			best = enemy
