@@ -68,8 +68,18 @@ func _run() -> void:
 	check(hud.get_script().resource_path.ends_with("phase10_gem_ui_hud.gd"), "playable scene uses integrated Phase 10 HUD")
 	check(ResourceLoader.exists("res://fonts/NotoSansTC.ttf"), "Traditional Chinese Noto Sans resource exists in tested build")
 	check(hud._root.theme != null and hud._root.theme.default_font != null, "integrated HUD owns one explicit shared font theme")
+	var shared_font: Font = hud._root.theme.default_font
+	var required_glyphs := "背包角色裝備武器護甲寶石支援主動插槽已連線未連線裝上移除無法插入不相容技能資訊等級傷害魔力冷卻攻擊間隔"
+	var glyphs_ok := true
+	for i in range(required_glyphs.length()):
+		if not shared_font.has_char(required_glyphs.unicode_at(i)):
+			glyphs_ok = false
+			break
+	check(glyphs_ok, "shared HUD font contains required Traditional Chinese glyphs")
 	var ui_text := all_ui_text(hud._inventory_panel)
-	check(ui_text.contains("角色裝備") and ui_text.contains("背包") and ui_text.contains("技能資訊") and not ui_text.contains("�"), "main equipment/gem labels are valid Traditional Chinese without replacement glyphs")
+	check(ui_text.contains("角色裝備") and ui_text.contains("背包") and ui_text.contains("技能資訊") and ui_text.contains("裝上") and ui_text.contains("移除") and not ui_text.contains("�"), "main equipment/gem labels are valid Traditional Chinese without replacement glyphs")
+	var support_detail := GemRules.gem_detail("scatter")
+	check(support_detail.contains("支援效果") and support_detail.contains("相容標籤") and support_detail.contains("魔力倍率") and not support_detail.contains("Mana Multiplier"), "support detail is fully readable Traditional Chinese")
 	check(hud._equipment_socket_view.get_parent() == hud._bag_page and hud._grid_view.get_parent() == hud._bag_page and hud._equipment_socket_view.get_index() < hud._grid_view.get_index(), "equipment socket strip is physically above the backpack in one surface")
 	check(hud._grid_view.custom_minimum_size == Vector2(756, 420) and Grid.COLS == 18 and Grid.ROWS == 10, "Phase 8 18 by 10 backpack geometry is unchanged")
 
@@ -86,9 +96,18 @@ func _run() -> void:
 	hud._refresh_inventory()
 	check(int(game.equipment["weapon"]["socket_count"]) == 3 and int(game.equipment["armor"]["socket_count"]) == 3, "weapon and armor expose real socket data")
 	check(game.equipment["weapon"]["socket_links"] == [[0,1]], "weapon link graph is preserved and visible to UI model")
+	check(hud._socket_link_state(game.equipment["weapon"], 0) == "已連線" and hud._socket_link_state(game.equipment["weapon"], 2) == "未連線", "socket detail reports linked and unlinked states explicitly")
+
+	# Backpack gem -> occupied backpack gem must reject without duplication or loss.
+	var ember_index := find_gem(game.inventory, "ember_bolt")
+	var overlap_target_index := find_gem(game.inventory, "scatter")
+	var ember_x_before := int(game.inventory[ember_index]["grid_x"])
+	var ember_y_before := int(game.inventory[ember_index]["grid_y"])
+	var bag_count_before_overlap := game.inventory.size()
+	check(not game.move_inventory_gem(ember_index, int(game.inventory[overlap_target_index]["grid_x"]), int(game.inventory[overlap_target_index]["grid_y"])), "backpack gem cannot be dropped onto occupied backpack gem")
+	check(game.inventory.size() == bag_count_before_overlap and int(game.inventory[ember_index]["grid_x"]) == ember_x_before and int(game.inventory[ember_index]["grid_y"]) == ember_y_before, "failed backpack gem move never duplicates or loses the gem")
 
 	# PC native drag: backpack active -> weapon socket.
-	var ember_index := find_gem(game.inventory, "ember_bolt")
 	var drag = hud._grid_view._get_drag_data(bag_point(game.inventory[ember_index]))
 	check(drag is Dictionary and drag.get("kind") == "inventory_gem", "PC grid exposes native drag data for a gem")
 	hud._equipment_socket_view._drop_data(hud._equipment_socket_view.socket_center("weapon", 0), drag)
@@ -103,6 +122,18 @@ func _run() -> void:
 	var linked_mods := GemRules.modifiers_for_equipment(game.equipment, "ember_bolt")
 	check(int(linked_mods["projectile_count"]) == 3 and float(linked_mods["damage_multiplier"]) < 1.0, "linked compatible support changes resolved Ember Bolt modifiers")
 	check(not game.assign_skill_slot(2, "scatter"), "support gem can never enter hotbar")
+
+	# Duplicate same-ID support applies once; incompatible linked support applies zero times.
+	var duplicate_weapon := gear("weapon", "重複輔助測試", ["red","green","green"], [[0,1],[1,2]])
+	duplicate_weapon["installed_gems"] = ["ember_bolt","scatter","scatter"]
+	var duplicate_equipment := {"weapon": duplicate_weapon, "armor": {}}
+	var duplicate_mods := GemRules.modifiers_for_equipment(duplicate_equipment, "ember_bolt")
+	check((duplicate_mods["supports"] as Array).count("scatter") == 1 and int(duplicate_mods["projectile_count"]) == 3, "duplicate same-ID support is deduplicated within one connected group")
+	var incompatible_weapon := gear("weapon", "不相容輔助測試", ["blue","green","blue"], [[0,1]])
+	incompatible_weapon["installed_gems"] = ["shock_nova","scatter",""]
+	var incompatible_equipment := {"weapon": incompatible_weapon, "armor": {}}
+	var incompatible_mods := GemRules.modifiers_for_equipment(incompatible_equipment, "shock_nova")
+	check((incompatible_mods["supports"] as Array).is_empty(), "linked but incompatible support has no effect")
 
 	# Unlinked support has no effect, then link graph activation makes it effective.
 	var pierce_index := find_gem(game.inventory, "pierce")
