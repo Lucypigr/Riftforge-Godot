@@ -305,7 +305,7 @@ jobs:
       - name: Checkout CI-verified Phase 10 gem expansion separately (not merged)
         uses: actions/checkout@v4
         with:
-          ref: 4de7b4b9a83fc99c449622cd79a570de5d28b8cb
+          ref: 0582548342f3bd4d70b553d2a0fe37e1d0ae04b6
           path: phase10-src
           persist-credentials: false
 
