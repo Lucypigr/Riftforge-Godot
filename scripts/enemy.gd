@@ -22,6 +22,8 @@ var _visual_material: StandardMaterial3D
 var _bar_fill: MeshInstance3D
 var _color := Color("#d45c6b")
 var _attack_done := false
+var _slow_time: float = 0.0
+var _slow_multiplier: float = 1.0
 
 func initialize(owner_game, enemy_kind: String, is_boss: bool = false) -> void:
 	game = owner_game
@@ -104,6 +106,9 @@ func _physics_process(delta: float) -> void:
 		return
 	_attack_timer -= delta
 	_flash = maxf(0.0, _flash - delta)
+	_slow_time = maxf(0.0, _slow_time - delta)
+	if _slow_time <= 0.0:
+		_slow_multiplier = 1.0
 	_visual_material.albedo_color = Color.WHITE if _flash > 0.0 else _color
 	var to_player: Vector3 = game.player.global_position - global_position
 	to_player.y = 0.0
@@ -125,7 +130,7 @@ func _physics_process(delta: float) -> void:
 				move_dir = dir
 		elif dist > attack_range * 0.82:
 			move_dir = dir
-		velocity = move_dir * move_speed + _knock
+		velocity = move_dir * move_speed * _slow_multiplier + _knock
 		if dist <= attack_range and _attack_timer <= 0.0:
 			_start_attack()
 	_knock = _knock.move_toward(Vector3.ZERO, 17.0 * delta)
@@ -166,3 +171,12 @@ func take_hit(amount: int, source_position: Vector3) -> void:
 	if hp <= 0.0:
 		game.enemy_died(global_position, boss)
 		queue_free()
+
+func apply_slow(multiplier: float, duration: float) -> void:
+	if hp <= 0.0 or duration <= 0.0:
+		return
+	_slow_multiplier = minf(_slow_multiplier, clampf(multiplier, 0.2, 1.0))
+	_slow_time = maxf(_slow_time, duration)
+
+func current_move_speed() -> float:
+	return move_speed * _slow_multiplier

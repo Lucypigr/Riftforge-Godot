@@ -18,6 +18,10 @@ func _run() -> void:
 	game.player.mana = 80.0
 	game._skill_runtime.advance(10.0)
 	game._sync_cooldowns()
+	# This regression owns its hotbar fixture. Earlier Phase 7 tests intentionally
+	# move the active gems and persist that state in the shared user:// save.
+	# Keep this test focused on independent touch ownership and release-to-cast.
+	game.skill_slots = ["ember_bolt", "shock_nova", "", "", "", ""]
 	var joy_center: Vector2 = controls._center("joy")
 	var attack_center: Vector2 = controls._center("attack")
 	var initial: int = _friendly_count(game)
@@ -32,10 +36,10 @@ func _run() -> void:
 	_check("joystick drag still does not fire", _friendly_count(game) == initial)
 	_touch(controls, 2, attack_center, true)
 	_check("second finger belongs to attack independently", controls.joy_id == 1 and controls.attack_id == 2)
-	_check("actual screen attack event spawns projectiles", _friendly_count(game) == initial + 3)
-	_check("attacking does not cancel moving", game.mobile_move.x > 0.9)
+	_check("attack hold does not cast before release", _friendly_count(game) == initial)
+	_check("aiming does not cancel moving", game.mobile_move.x > 0.9)
 	_touch(controls, 2, attack_center, false)
-	_check("attack release does not release joystick", controls.attack_id == -1 and controls.joy_id == 1)
+	_check("attack release casts and preserves joystick ownership", _friendly_count(game) > initial and controls.attack_id == -1 and controls.joy_id == 1)
 	_touch(controls, 1, joy_center, false)
 	_check("joystick release stops movement", controls.joy_id == -1 and game.mobile_move.is_zero_approx())
 	print("PHASE2 MULTITOUCH: %d passed / %d failed" % [passed, failed])

@@ -48,6 +48,10 @@ static func resolve(skill: SkillDefinition, target: Dictionary, modifiers: Dicti
 	var conversion: float = clampf(float(modifiers.get("physical_to_fire", 0.0)), 0.0, 1.0)
 	damage_by_type["physical"] = float(damage_by_type.get("physical", 0.0)) + physical * (1.0 - conversion)
 	damage_by_type["fire"] = float(damage_by_type.get("fire", 0.0)) + physical * conversion
+	# Phase 10 supports can add typed hit components while still using this single resolver.
+	var added_by_type: Dictionary = modifiers.get("added_damage_by_type", {})
+	for added_type in added_by_type:
+		damage_by_type[str(added_type)] = float(damage_by_type.get(str(added_type), 0.0)) + maxf(0.0, float(added_by_type[added_type]))
 	var bonuses: Dictionary = modifiers.get("type_increased_percent", {})
 	var general_bonus: float = maxf(0.0, 1.0 + float(modifiers.get("increased_percent", 0.0)) / 100.0)
 	var more: float = maxf(0.0, float(modifiers.get("more_multiplier", 1.0)))
