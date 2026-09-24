@@ -197,13 +197,14 @@ static func gem_detail(gem_id: String) -> String:
 		return "未知寶石"
 	var color_name: String = str({"red": "紅色", "green": "綠色", "blue": "藍色"}.get(str(gem.get("color", "")), "無色"))
 	var kind_name: String = "主動" if is_active(gem_id) else "輔助"
+	var effect_label := "支援效果" if is_support(gem_id) else "主要效果"
 	var lines: Array = [
 		"%s" % display_name(gem_id),
 		"%s｜%s｜等級 %d" % [color_name, kind_name, int(gem.get("level", 1))],
 		"Tags: %s" % ", ".join(PackedStringArray(gem.get("tags", []))),
-		str(gem.get("summary", ""))
+		"%s：%s" % [effect_label, str(gem.get("summary", ""))]
 	]
 	if is_support(gem_id):
-		lines.append("支援：%s" % ", ".join(PackedStringArray(gem.get("requires", []))))
-		lines.append("Mana Multiplier: %.1f" % float(gem.get("mana_multiplier", 1.0)))
+		lines.append("相容標籤：%s" % ", ".join(PackedStringArray(gem.get("requires", []))))
+		lines.append("魔力倍率：%.1fx" % float(gem.get("mana_multiplier", 1.0)))
 	return "\n".join(lines)
